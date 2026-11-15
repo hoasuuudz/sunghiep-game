@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sự nghiệp: Cầu thủ & HLV</title>
+<style>
+:root{--bg:#0a1020;--c1:#131c31;--c2:#1c2a48;--tx:#e9efff;--mu:#8fa2c8;--g:#22c55e;--b:#38bdf8;--r:#ef4444;--y:#f5b50a;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+#app{max-width:560px;margin:auto;padding:0 12px 90px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 0;display:flex;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--c2)}
+header small{display:block;color:var(--mu);font-size:12px}
+button{font:inherit;color:var(--tx);background:var(--c2);border:0;border-radius:12px;padding:12px 14px;min-height:46px;cursor:pointer}
+button:active{transform:scale(.97)}button:disabled{opacity:.4}
+.pri{background:var(--y);color:#201600;font-weight:700}.ok{background:var(--g);color:#04210f;font-weight:700}.role{background:var(--b);color:#03202e;font-weight:700;padding:10px 12px}
+.card{background:var(--c1);border-radius:16px;padding:14px;margin:12px 0}
+h2,h3{margin:0 0 8px}h3{font-size:16px}h2{font-size:20px}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bar{height:9px;background:var(--c2);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;border-radius:9px;transition:width .8s ease}
+.chip{display:inline-block;padding:3px 9px;border-radius:20px;background:var(--c2);font-size:12px;margin:2px}.up{background:#0f3a24;color:#6df0a2}.dn{background:#431616;color:#ff9a9a}
+.mu{color:var(--mu)}.sel{outline:2px solid var(--y);background:#2a2f45}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--c1);display:flex;overflow-x:auto;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:6;gap:4px;border-top:1px solid var(--c2)}
+nav button{flex:0 0 auto;padding:8px 11px;min-height:44px;font-size:13px;background:none}nav .on{background:var(--c2);color:var(--y)}
+.score{font-size:38px;font-weight:800;text-align:center;letter-spacing:2px}.log{max-height:260px;overflow:auto;font-size:14px}.log div{padding:5px 0;border-bottom:1px solid var(--c2)}
+.modal{background:var(--c2);border:2px solid var(--y);border-radius:16px;padding:14px;margin:12px 0}.modal button{display:block;width:100%;margin-top:8px;text-align:left}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 3px;text-align:center}td:nth-child(2),th:nth-child(2){text-align:left}tr.me{color:var(--y);font-weight:700}
+input,select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--c2);background:var(--bg);color:var(--tx);font:inherit;margin:4px 0 10px}
+</style></head><body><div id="app"></div>
+<script>
+/* ===== 1. CONFIG: toàn bộ data nằm ở đây, thêm nội dung bằng cách thêm vào mảng ===== */
+const ST={spd:'Tốc độ',sht:'Sút',pas:'Chuyền',drb:'Rê bóng',def:'Phòng ngự',sta:'Thể lực'};
+const CFG={
+teams:['Hà Nội FC','Sài Gòn United','Đà Nẵng Sóng','Hải Phòng Cảng','Huế Cố Đô','Nam Định Thép','Cần Thơ Tây Đô','Bình Dương Vàng','Thanh Hóa Rồng','Quảng Ninh Than'],
+last:['Nguyễn','Trần','Lê','Phạm','Hoàng','Vũ','Đặng','Bùi','Đỗ','Phan'],mid:['Văn','Quang','Minh','Công','Hữu','Tuấn','Đức','Thành'],
+first:['Hải','Nam','Long','Dũng','Phong','Tùng','Khoa','Sơn','Hùng','Kiên','Bảo','Trung'],
+fF:['Lucas','Diego','Mateo','Jonas','Kai','Marco','Luka','Ethan','Noah','Omar'],fL:['Silva','Costa','Meyer','Rossi','Novak','Santos','Kane','Diaz','Weber','Moreau'],
+traits:['Nhiệt huyết','Lạnh lùng','Hay ghen','Thủ lĩnh','Vui tính','Tham tiền'],
+fm:{'4-4-2':[0,0],'4-3-3':[3,-2],'3-5-2':[1,1],'5-4-1':[-3,4]},
+sy:{attack:[4,-3,'Tấn công'],balance:[0,0,'Cân bằng'],defend:[-3,4,'Phòng ngự']},
+ev:[
+{r:'P',t:'Phóng viên hỏi về HLV',d:'Sau trận, phóng viên hỏi bạn nghĩ gì về cách dùng người của thầy.',c:[
+ {t:'Ủng hộ thầy',fx:{tm:3,chem:2},m:'Phòng thay đồ quý bạn hơn.'},
+ {t:'Nói thẳng, chê chiến thuật',fx:{fame:4,chem:-4,later:{w:8,fx:{rep:-4},msg:'Ban lãnh đạo nhớ lời chê thầy cũ của bạn: uy tín HLV giảm.'}},m:'Báo chí đăng rần rần.'}]},
+{r:'P',t:'Rủ đi chơi khuya',d:'Cả hội rủ đi karaoke tới 2 giờ sáng.',c:[
+ {t:'Đi cùng',fx:{close:8,energy:-20,form:-4,morale:4,later:{w:5,fx:{fame:-6,flag:'scandal'},msg:'Clip đi chơi khuya bị tung lên mạng.'}},m:'Vui thật, nhưng mệt.'},
+ {t:'Từ chối, về ngủ',fx:{energy:8,chem:-2},m:'Vài anh em thấy bạn khó gần.'}]},
+{r:'P',t:'Đàn anh dạy kèm',d:'Đội trưởng ngỏ ý kèm riêng bạn sau buổi tập.',c:[
+ {t:'Nhận lời',fx:{st:{pas:1,def:1},close:10,energy:-8},m:'Học được nhiều thứ.'},
+ {t:'Từ chối khéo',fx:{morale:-2,chem:-2},m:'Đàn anh hơi buồn.'}]},
+{r:'C',t:'Ngôi sao đòi tăng lương',d:'Cầu thủ giỏi nhất đội đòi nâng lương, nếu không sẽ tìm đường ra.',c:[
+ {t:'Đồng ý',fx:{budget:-600,tm:4,chem:3},m:'Anh ấy hài lòng.'},
+ {t:'Từ chối',fx:{tm:-5,chem:-4,later:{w:6,fx:{tm:-6},msg:'Ngôi sao vẫn dằn vặt vì bị từ chối, bầu không khí đội xuống.'}},m:'Anh ấy im lặng bỏ đi.'},
+ {t:'Hứa suất đá chính (8 tuần, ít nhất 5 trận)',fx:{rep:-1,tm:2,promise:1},m:'Bạn đã hứa. Đừng quên.'}]},
+{r:'C',t:'Hai cầu thủ xích mích',d:'Hai cầu thủ cãi nhau ngay trên sân tập.',c:[
+ {t:'Hòa giải',fx:{hr:1,chem:3},m:'Hai người bắt tay.'},
+ {t:'Phạt cả hai',fx:{chem:-3,tm:-2,rep:1},m:'Kỷ luật nghiêm, nhưng không ai vui.'},
+ {t:'Lờ đi',fx:{later:{w:5,fx:{chem:-8,tm:-5},msg:'Mâu thuẫn bùng nổ trong phòng thay đồ.'}},m:'Chuyện tạm yên.'}]},
+{r:'C',t:'Cầu thủ trẻ xin cơ hội',d:'Một cầu thủ trẻ xin được ra sân nhiều hơn.',c:[
+ {t:'Cho cơ hội',fx:{close:6,vis:1,tm:1},m:'Cậu ta tràn đầy năng lượng.'},
+ {t:'Chưa tới lúc',fx:{tm:-1},m:'Cậu ta gật đầu, hơi buồn.'}]},
+{r:'C',t:'Ban lãnh đạo gợi ý bán người',d:'Ban lãnh đạo muốn bán một cầu thủ để lấy tiền.',c:[
+ {t:'Chấp nhận',fx:{budget:1200,chem:-4,tm:-3},m:'Quỹ đầy hơn, đội hơi chênh vênh.'},
+ {t:'Từ chối',fx:{rep:-1,tm:2},m:'Ban lãnh đạo không vui.'}]},
+{r:'A',t:'Hợp đồng tài trợ giày',d:'Một hãng giày đề nghị tài trợ cho bạn.',c:[
+ {t:'Ký hợp đồng',fx:{money:1500,fame:1,chem:-1},m:'Tiền về tài khoản.'},
+ {t:'Từ chối',fx:{fame:2,tm:1},m:'Bạn giữ hình ảnh sạch.'}]},
+{r:'A',t:'Fan xin chụp ảnh',d:'Một nhóm fan đợi bạn ngoài cổng.',c:[
+ {t:'Chụp ảnh với mọi người',fx:{fame:2,morale:3,energy:-4},m:'Ai cũng vui.'},
+ {t:'Lịch sự từ chối',fx:{fame:-1},m:'Có người thất vọng.'}]},
+{r:'A',t:'Drama mạng xã hội',k:()=>S.fame>25,d:'Một bài đăng cũ của bạn bị đào lên và gây tranh cãi.',c:[
+ {t:'Xin lỗi công khai',fx:{fame:-2,tm:1},m:'Sóng gió qua nhanh.'},
+ {t:'Phản pháo',fx:{fame:5,chem:-3,flag:'scandal'},m:'Nổi tiếng hơn, nhưng thêm tai tiếng.'},
+ {t:'Lờ đi',fx:{fame:-1},m:'Câu chuyện tự nguội.'}]},
+{r:'A',t:'Đau nhẹ ở cơ đùi',d:'Bạn thấy hơi nhói ở đùi sau buổi tập.',c:[
+ {t:'Cố tập tiếp',fx:{st:{sta:1},later:{w:2,fx:{energy:-15,form:-6},msg:'Cơn đau tái phát vì cố tập.'}},m:'Bạn cắn răng tập tiếp.'},
+ {t:'Nghỉ vài ngày',fx:{energy:15},m:'Cơ thể hồi phục tốt.'}]}
+],
+ach:[{id:'g1',t:'Bàn thắng đầu tiên',f:()=>S.goals>=1},{id:'g10',t:'Chân sút 10 bàn',f:()=>S.goals>=10},{id:'fm',t:'Ngôi sao (danh tiếng 60)',f:()=>S.fame>=60},
+{id:'ov',t:'Cầu thủ đẳng cấp (OVR 80)',f:()=>S.me.ovr>=80},{id:'tp',t:'Vô địch với tư cách cầu thủ',f:()=>S.ti.P>0},{id:'tc',t:'Vô địch với tư cách HLV',f:()=>S.ti.C>0},
+{id:'bo',t:'Người làm được cả hai',f:()=>S.ti.P>0&&S.ti.C>0},{id:'qb',t:'Quả bóng vàng',f:()=>S.balls>0},{id:'sw',t:'Hai chiếc áo (chuyển vai 5 lần)',f:()=>S.sw>=5}]
+};
+
+/* ===== 1b. ĐỢT 2: SỰ KIỆN MỞ RỘNG, NGHIỆP, LỜI HỨA, CỰU THÙ ===== */
+const E=(r,t,d,...c)=>({r,t,d,c:c.map(([t,fx,m])=>({t,fx,m}))}),Ek=(k,e)=>(e.k=k,e),Et=(w,r,t,d,...c)=>{const e=E(r,t,d,...c);e.w=w;e.k=()=>S.teams[S.team].sq.some(x=>!x.me&&x.tr===w);return e};
+CFG.ev.push(
+E('P','HLV gọi lên nói chuyện','Thầy bảo bạn cần cải thiện thái độ tập luyện.',['Lắng nghe',{morale:-2,st:{def:1}},'Thầy gật đầu hài lòng.'],['Cãi lại',{fame:1,chem:-3,later:{w:6,fx:{form:-5},msg:'Thầy bắt bạn tập riêng để dằn mặt, phong độ sa sút.'}},'Không khí căng thẳng.']),
+E('P','Đồng đội mượn tiền','Một đồng đội hỏi mượn bạn 500.',['Cho mượn',{money:-500,close:8,later:{w:8,fx:{money:700},msg:'Đồng đội trả tiền kèm lời cảm ơn và chút quà.'}},'Anh ấy rất biết ơn.'],['Từ chối khéo',{close:-3},'Anh ấy hơi buồn.']),
+E('P','Người đại diện chào mời','Một người đại diện muốn quản lý hình ảnh của bạn.',['Ký hợp đồng',{money:-300,later:{w:4,fx:{money:1500,fame:2},msg:'Người đại diện kiếm cho bạn hợp đồng quảng cáo.'}},'Bạn ký tên.'],['Tự lo mọi thứ',{energy:-3,fame:1},'Bạn tự xoay xở.']),
+E('P','Trường cũ mời giao hữu','Trường cũ mời bạn về đá trận giao hữu gây quỹ.',['Về đá',{fame:2,energy:-10,morale:5},'Cả sân vỗ tay chào đón bạn.'],['Từ chối',{energy:5},'Bạn dành thời gian nghỉ ngơi.']),
+E('P','Bị chửi sau trận thua','Fan chửi bạn trên mạng sau thất bại.',['Im lặng chịu đựng',{morale:-3,fame:-1},'Bạn tắt điện thoại.'],['Đăng lời hứa lấy lại phong độ',{morale:2,form:3,later:{w:5,fx:{fame:-3},msg:'Fan nhắc lại lời hứa của bạn khi bạn đá tệ.'}},'Fan chờ xem bạn nói được làm được.']),
+E('P','Đội khác hỏi mua','Một đội lớn hỏi mua bạn.',['Từ chối, ở lại',{chem:4,tm:2},'Đồng đội rất cảm kích.'],['Đòi tăng lương',{chem:-3,later:{w:5,fx:{money:2000},msg:'Đội nâng lương để giữ chân bạn.'}},'Bạn có thêm lá bài mặc cả.']),
+Ek(()=>S.fame>40,E('P','Trao băng đội trưởng','HLV muốn trao băng đội trưởng cho bạn.',['Nhận băng',{chem:3,morale:5,tm:2,energy:-4},'Trách nhiệm nặng hơn.'],['Nhường người khác',{close:5,fame:-1},'Bạn chọn đứng sau.'])),
+E('P','Học tiếng Anh','Một khóa tiếng Anh giúp bạn giao tiếp với đồng đội ngoại.',['Đi học',{money:-200,st:{pas:1}},'Đường chuyền ăn ý hơn.'],['Bỏ qua',{},'Bạn dành thời gian cho việc khác.']),
+E('C','Thủ môn mắc sai lầm','Thủ môn của bạn vừa mắc lỗi khiến đội thủng lưới.',['Động viên',{trust:6,tm:2},'Cậu ấy lấy lại tinh thần.'],['Trách mắng trước đội',{trust:-6,rep:1,tm:-2},'Kỷ luật nhưng không khí nặng nề.']),
+E('C','Đề xuất đá tập','Ban huấn luyện đề xuất trận đá tập với đội trẻ.',['Đồng ý',{trn:1,energy:-8,tm:1},'Mọi người ra sân hăng hái.'],['Không cần',{},'Bạn giữ lịch cũ.']),
+E('C','Đối thủ chê chiến thuật','HLV đối thủ nói bạn đá thiếu sáng tạo.',['Phản bác trên báo',{fame:2,rep:-1},'Truyền thông có chuyện để viết.'],['Im lặng',{rep:1},'Bạn để kết quả lên tiếng.']),
+Ek(()=>S.lineupSelf,E('C','Phóng viên hỏi chuyện xếp đá chính','“Anh tự xếp mình đá chính có công bằng không?”',['Tôi xứng đáng',{fame:1,tm:-2,chem:-2},'Một số cầu thủ nhăn mặt.'],['Đội đang thiếu người',{rep:1,chem:1},'Nghe cũng hợp lý.'])),
+E('C','Đội muốn nghỉ thêm','Cả đội xin thêm một buổi nghỉ.',['Cho nghỉ',{energy:10,tm:3},'Cả đội vui vẻ.'],['Giữ lịch tập',{trn:1,tm:-3},'Bạn giữ vững kỷ luật.']),
+Ek(()=>S.coach.rep<10,E('C','Fan đòi thay HLV','Khán đài bắt đầu hô vang đòi thay HLV.',['Hứa cải thiện',{tm:-1,rep:1},'Bạn ghi nhận áp lực.'],['Phớt lờ',{later:{w:5,fx:{rep:-4},msg:'Fan tẩy chay, ban lãnh đạo gây áp lực lên bạn.'}},'Bạn cứng đầu.'])),
+E('C','Thực tập sinh phân tích video','Một thực tập sinh đề xuất làm phân tích video đối thủ.',['Nhận cậu ấy',{tac:2,budget:-200},'Chiến thuật sắc hơn.'],['Từ chối',{},'Bạn tự lo.']),
+E('A','Mưa lớn, tập trong nhà','Cơn mưa lớn đổ xuống sân tập.',['Tập gym',{energy:-6,st:{sta:1}},'Cơ bắp rắn chắc hơn.'],['Nghỉ ngơi',{energy:8},'Bạn tranh thủ ngủ.']),
+E('A','Làm từ thiện','Một quỹ từ thiện mời đội tham gia.',['Tham gia trực tiếp',{fame:2,money:-200,tm:1},'Mọi người tự hào.'],['Chỉ gửi tiền',{fame:1,money:-300},'Bạn đóng góp âm thầm.']),
+E('A','Phỏng vấn truyền hình','Một kênh truyền hình mời bạn lên sóng.',['Khiêm tốn',{fame:2,chem:1},'Khán giả có thiện cảm.'],['Khoe khoang',{fame:4,chem:-3,envy:5},'Nổi tiếng hơn, nhưng có người khó chịu.']),
+Ek(()=>S.flags.scandal>0,E('A','Báo chí săn tin','Phóng viên đào lại chuyện cũ của bạn.',['Lên tiếng đính chính',{fame:-1},'Sóng gió dịu dần.'],['Chịu trận',{fame:-3,morale:-3},'Bạn im lặng cắn răng.'])),
+Et('Hay ghen','P','{n} ghen ra mặt','{n} bóng gió rằng bạn được ưu ái vì nổi tiếng.',['Nói chuyện thẳng thắn',{envy:-12,close:4,energy:-4},'Hai người hiểu nhau hơn.'],['Phớt lờ',{envy:6,later:{w:6,fx:{chem:-6},msg:'Sự ghen tị của {n} bùng thành mâu thuẫn.'}},'Bạn tránh va chạm, tạm thời.'],['Tặng áo có chữ ký',{envy:-5,money:-100},'Anh ấy cười gượng.']),
+Et('Thủ lĩnh','P','{n} kéo bạn vào phe','Đội trưởng {n} muốn bạn đứng về phía anh trong cuộc tranh luận với HLV.',['Đứng về phía {n}',{close:10,chem:3,later:{w:7,fx:{rep:-2},msg:'HLV nhớ bạn đã theo phe {n}.'}},'Bạn có đồng minh, và một người để ý.'],['Giữ trung lập',{trust:2,chem:-1},'Không ai hài lòng hoàn toàn.']),
+Et('Vui tính','P','{n} bày trò chơi khăm','{n} định chơi khăm cả đội.',['Cùng tham gia',{close:8,morale:4,energy:-6},'Cả đội cười nghiêng ngả.'],['Nhắc anh tập trung',{close:-4,form:2},'Anh ấy tiu nghỉu.']),
+Et('Tham tiền','P','{n} rủ góp vốn','{n} rủ bạn góp tiền vào một “cơ hội làm giàu”.',['Góp 800',{money:-800,close:6,later:{w:8,fx:{fame:-2},msg:'Dự án đổ bể, {n} biến mất khỏi nhóm chat.'}},'Bạn tin anh ấy.'],['Từ chối',{close:-2},'Anh ấy bĩu môi.']),
+Et('Lạnh lùng','P','{n} xa cách cả đội','{n} luôn ngồi một mình trong phòng thay đồ.',['Rủ đi ăn',{close:7,chem:2,energy:-4},'Anh ấy bất ngờ mở lòng.'],['Để anh yên',{trust:-2},'Anh ấy vẫn lặng lẽ.']),
+Et('Nhiệt huyết','P','{n} rủ tập thêm','{n} rủ bạn ở lại sân tập thêm một buổi.',['Cùng tập',{st:{sta:1},close:6,energy:-12},'Hai người đổ mồ hôi.'],['Hẹn lần sau',{close:-2},'Anh ấy gật đầu.']),
+Et('Hay ghen','C','{n} ghen với đồng đội','{n} ấm ức vì bạn tin dùng người khác hơn.',['Trao đổi riêng',{envy:-10,trust:6,hr:1},'Anh ấy nguôi giận.'],['Cho đá chính một trận',{envy:-12,tm:-1},'Anh ấy ra sân đầy máu lửa.'],['Bỏ qua',{envy:8,later:{w:5,fx:{chem:-6},msg:'{n} nói xấu HLV với cả phòng thay đồ.'}},'Chuyện chưa xong.']),
+Et('Thủ lĩnh','C','{n} xin họp đội riêng','{n} muốn họp riêng với các cầu thủ.',['Cho phép',{chem:5,trust:6,rep:-1},'Đội đoàn kết hơn.'],['Từ chối',{trust:-6,later:{w:5,fx:{tm:-5},msg:'{n} chống đối HLV công khai.'}},'Anh ấy nuốt giận.']),
+Et('Vui tính','C','{n} làm cả đội cười','{n} pha trò giữa buổi tập căng thẳng.',['Cho giải lao',{tm:4,energy:5},'Không khí nhẹ hẳn.'],['Nhắc kỷ luật',{tm:-2,rep:1},'Cả đội im bặt.']),
+Et('Tham tiền','C','{n} đòi tiền thưởng','{n} đòi chia thêm tiền thưởng.',['Chi thưởng',{budget:-400,trust:6},'Anh ấy hài lòng.'],['Từ chối',{trust:-7,later:{w:6,fx:{tm:-4},msg:'{n} chểnh mảng tập luyện vì không được thưởng.'}},'Anh ấy lầm lì.']),
+Et('Lạnh lùng','C','{n} xin nghỉ về quê','{n} xin nghỉ vài ngày để về quê.',['Cho nghỉ',{trust:8,close:5,tm:-1},'Anh ấy lặng lẽ cảm ơn.'],['Không cho',{trust:-8},'Anh ấy nhìn bạn rất lâu.']),
+Et('Nhiệt huyết','C','{n} xin làm đội phó','{n} muốn đảm nhận băng đội phó.',['Giao băng đội phó',{trust:8,tm:2,chem:2},'Anh ấy rạng rỡ.'],['Chưa phù hợp',{trust:-3},'Anh ấy hơi thất vọng.'])
+);
+CFG.ach.push({id:'rc',t:'Cựu thù thành đồng đội',f:()=>S.flags.rc>0},{id:'kp',t:'Giữ trọn lời hứa',f:()=>S.flags.kept>0},{id:'bt',t:'Thắng lại người cũ',f:()=>S.flags.beat>0});
+function openEv(e){let p=null;if(e.w){const L=S.teams[S.team].sq.filter(x=>!x.me&&x.tr===e.w);p=L.length?pick(L):null}UI.npc=p;UI.modal=p?JSON.parse(JSON.stringify(e).replace(/\{n\}/g,p.n)):e}
+function toRival(p){const ti=pick(CFG.teams.map((_,k)=>k).filter(k=>k!==S.team));p.grudge=(p.close>45||p.trust<45)?1:0;p.from=S.team;p.mem.push('Bị bán đi (mùa '+S.season+')');S.teams[ti].sq.push(p)}
+function reunion(){S.teams.forEach((t,ti)=>{if(ti===S.team)return;[...t.sq].forEach(p=>{if(p.from===S.team&&Math.random()<.35){t.sq.splice(t.sq.indexOf(p),1);p.ex=1;p.price=Math.round(p.ovr*p.ovr/2*.8);S.market.unshift(p);S.notice.push('📩 '+p.n+' (bạn cũ) đang tìm bến đỗ mới.')}})})}
+function promCheck(){S.prom=S.prom||[];S.prom.forEach(x=>x.w--);const due=S.prom.filter(x=>x.w<=0);S.prom=S.prom.filter(x=>x.w>0);due.forEach(x=>{const p=S.teams[S.team].sq.find(q=>q.n===x.n);if(!p)return;if((p.apps||0)-x.base>=5){p.trust=cl(p.trust+15);p.close=cl(p.close+10);S.flags.kept=(S.flags.kept||0)+1;S.hl.push('bạn giữ đúng lời hứa với '+p.n);S.notice.push('🤝 Bạn giữ lời hứa với '+p.n+', anh ấy rất tin bạn.')}else{p.trust=cl(p.trust-25);p.envy=cl(p.envy+15);S.chem=cl(S.chem-8);S.hl.push('bạn thất hứa với '+p.n+' và anh ấy quay lưng');S.notice.push('💢 '+p.n+' biết bạn đã thất hứa.');S.delayed.push({w:4,fx:{tm:-6,chem:-6},msg:p.n+' công khai thất vọng vì bị thất hứa, phòng thay đồ chia rẽ.'});p.mem.push('Bị thất hứa (mùa '+S.season+')')}})}
+function headline(res,m,O){const n=S.name,T=S.teams[S.team].n,[g,c]=m.sc,A=[];
+ if(S.role==='P'&&m.g>=2)A.push(`${n} lập cú đúp, ${T} ${res==='W'?'giành chiến thắng':'vẫn không thoát thua'}`);
+ if(S.role==='P'&&m.a>0)A.push(`Đường chuyền của ${n} là mấu chốt trước ${O}`);
+ if(S.role==='P'&&m.rating&&m.rating<5.5)A.push(`${n} có buổi tối tệ nhất mùa, fan nổi giận`);
+ if(S.role==='C'&&res==='W')A.push(`HLV ${n} và những quyết định táo bạo đưa ${T} đến chiến thắng`);
+ if(S.role==='C'&&res==='L')A.push(`Ghế nóng của HLV ${n} rung lắc sau trận thua ${O}`);
+ if(S.flags.sold&&S.role==='P')A.push(`Phòng thay đồ ${T} còn xì xào chuyện ${n} bán người thân thiết`);
+ if(S.flags.scandal)A.push(`Tai tiếng cũ của ${n} lại bị báo chí nhắc`);
+ A.push(`${T} ${g}-${c} ${O}: ${res==='W'?'ba điểm quý giá':res==='L'?'bài học đắt giá':'chia điểm'}`);return pick(A)}
+const pend=()=>{const n=S.delayed.length,p=S.prom||[];return n+p.length?`<div class="card mu">🌫 Có ${n} chuyện đang âm ỉ trong bóng tối${p.length?` · bạn đã hứa cho ${p.map(x=>x.n).join(', ')} đá chính`:''}. Rồi sẽ có lúc nó nổ.</div>`:''};
+function exView(){const L=[];S.teams.forEach((t,ti)=>t.sq.forEach(p=>{if(p.from===S.team&&ti!==S.team)L.push([p,t.n])}));if(!L.length)return'';return`<div class="card"><h3>Cựu đồng đội</h3>${L.map(([p,n])=>`<div class="row" style="padding:5px 0"><span>${p.n}<br><small class="mu">${n} · ${p.grudge?'😠 còn hận bạn':'đã nguôi'}</small></span><b>${p.ovr}</b></div>`).join('')}</div>`}
+
+/* ===== 1c. ĐỢT 3: THẾ GIỚI THẬT (config, lớp dữ liệu, fallback) ===== */
+CFG.leagues=[{id:340,n:'V.League 1'},{id:39,n:'Premier League'},{id:140,n:'La Liga'},{id:135,n:'Serie A'},{id:78,n:'Bundesliga'},{id:61,n:'Ligue 1'},{id:2,n:'Champions League'}];
+CFG.alias={}; // đổi tên đội hiển thị: {'Tên trong API':'Tên bạn muốn'}
+const RT={remaining:null,d:{}},FIN=['FT','AET','PEN'],LIVE=['1H','HT','2H','ET','BT','P','LIVE'];
+const maybeLive=f=>{const t=f.fixture.timestamp*1000,n=Date.now(),s=f.fixture.status.short;return LIVE.includes(s)||(t<n&&n-t<9e6&&!FIN.includes(s))};
+async function api(path,ttl){
+ const k='sn_c_'+path;let c=null;try{c=JSON.parse(localStorage.getItem(k))}catch(e){}
+ if(c&&Date.now()-c.at<ttl*1000)return{...c,src:'live'};
+ if(RT.remaining!==null&&RT.remaining<10)return c?{...c,src:'cache'}:null;
+ try{const r=await fetch(path);if(!r.ok)throw 0;const j=await r.json();if(!j||!j.data)throw 0;if(j.remaining!=null)RT.remaining=j.remaining;
+  c={data:j.data,at:j.at||Date.now()};try{localStorage.setItem(k,JSON.stringify(c))}catch(e){}return{...c,src:'live'}}
+ catch(e){return c?{...c,src:'cache'}:null}}
+async function ensureSquad(ti){const t=S.teams[ti];if(!S.real||t.real||!t.id)return;
+ const o=await api('/api/squad?team='+t.id,604800),L=o&&o.data&&o.data[0]&&o.data[0].players;
+ if(!L||L.length<14){t.real=-1;return} // thiếu dữ liệu đội hình: giữ cầu thủ hư cấu
+ const PM={Goalkeeper:'GK',Defender:'DF',Midfielder:'MF',Attacker:'FW'},keep=t.sq.filter(p=>p.me);
+ t.sq=L.slice(0,22).map(p=>{const ovr=cl((t.base||55)+r(-9,9),35,85),age=p.age||r(19,33);return{n:p.name,pos:PM[p.position]||'MF',age,ovr,pot:cl(ovr+(age<25?r(2,15):0),0,95),tr:pick(CFG.traits),trust:r(40,60),envy:r(0,25),close:r(10,40),mem:[],inj:0}}).concat(keep);t.real=1}
+async function syncReal(){if(!S||!S.real)return;const o=await api('/api/fixtures?league='+S.real.lg,21600);if(!o||!o.data)return;const mine=S.real.ids[S.team];
+ const done=o.data.filter(f=>FIN.includes(f.fixture.status.short)&&(f.teams.home.id===mine||f.teams.away.id===mine)&&!S.real.seen.includes(f.fixture.id)).sort((a,b)=>a.fixture.timestamp-b.fixture.timestamp);
+ if(!done.length)return;
+ done.slice(-2).forEach(f=>{const h=f.teams.home.id===mine,gf=h?f.goals.home:f.goals.away,ga=h?f.goals.away:f.goals.home,d=gf>ga?4:gf<ga?-4:0;S.tm=cl(S.tm+d);
+  S.notice.push(`🌍 Thực tế: ${f.teams.home.name} ${f.goals.home}-${f.goals.away} ${f.teams.away.name}${d?(d>0?' · đội phấn chấn (+4)':' · đội chùng xuống (-4)'):''}`)});
+ done.forEach(f=>S.real.seen.push(f.fixture.id));if(S.real.seen.length>60)S.real.seen=S.real.seen.slice(-40);save();render()}
+async function loadReal(id){if(!S||!S.real)return;id=id||UI.rv||S.real.lg;
+ const[a,b]=await Promise.all([api('/api/standings?league='+id,1800),api('/api/fixtures?league='+id,21600)]);
+ let live=null;if(b&&b.data&&b.data.some(maybeLive))live=await api('/api/fixtures?league='+id+'&live=1',60);
+ const fx=live&&live.data?live.data.concat((b?b.data:[]).filter(f=>!live.data.some(l=>l.fixture.id===f.fixture.id))):(b&&b.data);
+ const st=a&&a.data&&a.data[0]&&a.data[0].league?[].concat(...a.data[0].league.standings):null,any=[a,b,live].filter(Boolean);
+ RT.d[id]={st,fx,at:any.length?Math.max(...any.map(x=>x.at)):0,state:!any.length?'off':any.some(x=>x.src==='live')?'live':'cache'};render()}
+setInterval(()=>{if(!S||!S.real||UI.tab!=='table'||document.hidden)return;const id=UI.rv||S.real.lg,d=RT.d[id];if(d&&d.fx&&d.fx.some(maybeLive))loadReal(id)},60000);
+async function goNew(i){const nm=$('#nn').value.trim()||'Tân binh',pos=$('#np').value;UI.nn=nm;
+ if(UI.mode!=='real')return newGame(i,nm,pos,+$('#nt').value);
+ if(!UI.rl){const lg=+$('#nl').value;UI.lg=lg;UI.err='⏳ Đang tải giải đấu…';render();
+  const o=await api('/api/standings?league='+lg,1800),st=o&&o.data&&o.data[0]&&o.data[0].league?[].concat(...o.data[0].league.standings):null;
+  if(!st||st.length<10){UI.err='Không tải được dữ liệu giải (API chưa deploy, hết quota hoặc đang offline). Hãy chọn Thế giới ảo hoặc thử lại sau.';return render()}
+  UI.err='';UI.rl={lg:CFG.leagues.find(l=>l.id===lg),teams:st.map(x=>({id:x.team.id,name:CFG.alias[x.team.name]||x.team.name,rank:x.rank}))};return render()}
+ const all=UI.rl.teams,k=+$('#nt').value,n=all.length,a=cl(k-4,0,n-10);
+ UI.rt={lg:UI.rl.lg,teams:all.slice(a,a+10).map(t=>({...t,base:Math.round(66-(t.rank-1)/(n-1)*20)}))};UI.rl=null;UI.mode='sim';newGame(i,nm,pos,k-a)}
+function realView(){if(!S.real)return'';const id=UI.rv||S.real.lg,d=RT.d[id],mine=S.real.ids[S.team],nm=x=>(CFG.leagues.find(l=>l.id===x)||{}).n,
+ lb={live:'🔴 Đang trực tiếp',cache:'🟡 Dữ liệu cache',off:'⚪ Offline'}[d?d.state:'off'],hm=d&&d.at?new Date(d.at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):'';
+ let h=`<div class="card"><div class="row"><h3>Thế giới thật</h3><span class="chip">${lb}${d&&d.state!=='live'&&hm?' · Dữ liệu lúc '+hm:''}</span></div><div class="grid">${[...new Set([S.real.lg,2])].map(x=>`<button class="${id===x?'sel':''}" onclick="UI.rv=${x};loadReal(${x})">${nm(x)}</button>`).join('')}</div>`;
+ if(!d||(!d.st&&!d.fx))return h+'<p class="mu">Chưa có dữ liệu thật. Game vẫn chạy bình thường bằng dữ liệu mô phỏng.</p></div>';
+ const F=(d.fx||[]).slice().sort((a,b)=>a.fixture.timestamp-b.fixture.timestamp),done=F.filter(f=>FIN.includes(f.fixture.status.short)).slice(-4),next=F.filter(f=>!FIN.includes(f.fixture.status.short)).slice(0,5),
+ ln=f=>`<div class="${f.teams.home.id===mine||f.teams.away.id===mine?'':'mu'}">${f.teams.home.name} ${f.goals.home??'-'} - ${f.goals.away??'-'} ${f.teams.away.name} <small>${LIVE.includes(f.fixture.status.short)?'🔴 '+(f.fixture.status.elapsed||'')+"'":new Date(f.fixture.timestamp*1000).toLocaleDateString('vi-VN')}</small></div>`;
+ if(d.st)h+=`<table><tr><th>#</th><th>Đội</th><th>Tr</th><th>HS</th><th>Đ</th></tr>${d.st.slice(0,20).map(x=>`<tr class="${x.team.id===mine?'me':''}"><td>${x.rank}</td><td>${x.team.name}</td><td>${x.all.played}</td><td>${x.goalsDiff}</td><td><b>${x.points}</b></td></tr>`).join('')}</table>`;
+ if(F.length)h+=`<h3 style="margin-top:12px">Kết quả và lịch thật</h3>${done.map(ln).join('')}${next.map(ln).join('')}`;
+ return h+'</div>'}
+
+/* ===== 2. TIỆN ÍCH & LƯU TRỮ ===== */
+const $=s=>document.querySelector(s),r=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[r(0,a.length-1)],cl=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
+let S=null,UI={tab:'week',sel:[],m:null,modal:null,slot:0,nw:0,se:null,end:null,t:null,quick:false};
+const KEY=i=>'sn_slot'+i;
+function save(){if(!S)return;try{localStorage.setItem(KEY(UI.slot),JSON.stringify(S))}catch(e){}}
+function load(i){try{return JSON.parse(localStorage.getItem(KEY(i)))}catch(e){return null}}
+function del(i){try{localStorage.removeItem(KEY(i))}catch(e){}render()}
+const bar=(v,c='var(--b)')=>`<div class="bar"><i style="width:${cl(Math.round(v))}%;background:${c}"></i></div>`;
+
+/* ===== 3. TẠO THẾ GIỚI ===== */
+function mkName(){return Math.random()<.7?pick(CFG.last)+' '+pick(CFG.mid)+' '+pick(CFG.first):pick(CFG.fF)+' '+pick(CFG.fL)}
+function mkP(base,young){const age=young?r(17,21):r(18,35),ovr=cl(base+r(-9,9),35,85);return{n:mkName(),pos:pick(['DF','MF','FW']),age,ovr,pot:cl(ovr+(age<25?r(2,15):0),0,95),tr:pick(CFG.traits),trust:r(40,60),envy:r(0,25),close:r(10,40),mem:[],inj:0}}
+function mkSquad(base){const sq=[];['GK','GK','DF','DF','DF','DF','DF','DF','MF','MF','MF','MF','MF','MF','FW','FW','FW','FW'].forEach(pos=>{const p=mkP(base,0);p.pos=pos;sq.push(p)});for(let i=0;i<r(1,3);i++)sq.push(mkP(base,1));return sq}
+function mkFix(n){const t=[...Array(n).keys()],R=[];for(let k=0;k<n-1;k++){const rd=[];for(let i=0;i<n/2;i++){const a=t[i],b=t[n-1-i];rd.push(k%2?[b,a]:[a,b])}R.push(rd);t.splice(1,0,t.pop())}return R.concat(R.map(rd=>rd.map(([a,b])=>[b,a])))}
+const newTb=()=>CFG.teams.map(()=>({p:0,w:0,d:0,l:0,gf:0,ga:0,pt:0}));
+function meOvr(){const s=S.st,p=S.pos;return Math.round(p==='FW'?(s.sht*2+s.spd+s.drb)/4*.9+s.sta*.1:p==='MF'?(s.pas*2+s.drb+s.sta)/4:(s.def*2+s.spd+s.sta)/4)}
+function syncMe(){S.me.ovr=meOvr();S.me.age=S.age;S.me.pos=S.pos;S.me.pot=99}
+function mkMarket(){S.market=[];for(let i=0;i<5;i++){const p=mkP(55+S.coach.vis/4+r(0,10),i<2);p.price=Math.round(p.ovr*p.ovr/2*(S.flags.scandal?1.3:1));S.market.push(p)}}
+function newGame(i,name,pos,ti){
+ const st={};Object.keys(ST).forEach(k=>st[k]=r(48,60));
+ S={name,pos,role:'P',age:18,week:1,season:1,st,morale:60,form:50,fame:10,money:2000,budget:4000,energy:100,inj:0,tm:55,chem:60,luck:0,sp:900,
+ coach:{tac:20,trn:20,hr:20,vis:20,rep:10},team:ti,teams:UI.rt?UI.rt.teams.map(t=>({n:t.name,id:t.id,base:t.base,sq:mkSquad(t.base)})):CFG.teams.map((n,k)=>({n,sq:mkSquad(k===ti?52:48+r(0,16))})),fx:mkFix(10),tb:newTb(),
+ lineupSelf:true,formation:'4-4-2',style:'balance',goals:0,assists:0,sg:0,rt:[],rw:{P:0,C:0},ti:{P:0,C:0},balls:0,sw:0,ret:false,flags:{},delayed:[],seen:[],hl:[],ach:[],log:[],notice:[],sum:null,snap:null,sal:300,csal:300};
+ S.me={n:name,me:1,pos,age:18,ovr:0,pot:99,tr:'Bạn',trust:50,envy:0,close:50,mem:[],inj:0};syncMe();S.teams[ti].sq.push(S.me);mkMarket();UI.slot=i;UI.nw=0;UI.tab='week';UI.m=null;if(UI.rt){S.real={lg:UI.rt.lg.id,ln:UI.rt.lg.n,ids:UI.rt.teams.map(t=>t.id),seen:[]};UI.rt=null;save();render();ensureSquad(ti).then(()=>{save();render();syncReal()});return}save();render()}
+function loadGame(i){const g=load(i);if(!g)return;S=g;UI.slot=i;S.me=S.teams[S.team].sq.find(p=>p.me)||S.me;UI.tab='week';UI.m=null;UI.sel=[];render();syncReal()}
+
+/* ===== 4. ĐỘI HÌNH & SỨC MẠNH ===== */
+function lineup(ti,withMe){const sq=S.teams[ti].sq.filter(p=>!p.inj&&(!p.me||withMe));const gk=sq.filter(p=>p.pos==='GK').sort((a,b)=>b.ovr-a.ovr)[0];const rest=sq.filter(p=>p!==gk).sort((a,b)=>b.ovr-a.ovr).slice(0,gk?10:11);return gk?[gk,...rest]:rest}
+function str(L,fm,st,tac){const av=x=>(x.length?x:L).reduce((s,p)=>s+p.ovr,0)/(x.length||L.length||1);const k=1+tac/200,f=CFG.fm[fm],y=CFG.sy[st];return{a:av(L.filter(p=>p.pos==='FW'||p.pos==='MF'))+(f[0]+y[0])*k,d:av(L.filter(p=>p.pos==='DF'||p.pos==='GK'))+(f[1]+y[1])*k}}
+function meStarts(){if(S.inj)return false;const o=S.teams[S.team].sq.filter(p=>!p.me&&!p.inj).sort((a,b)=>b.ovr-a.ovr);return S.me.ovr+(S.form-50)/10>=(o[10]?o[10].ovr:0)-1}
+function pois(l){const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math.random()}while(p>L);return k-1}
+function tStr(i){const s=str(lineup(i,false),'4-4-2','balance',0);return(s.a+s.d)/2}
+function simAI(h,a){const x=tStr(h),y=tStr(a);return[pois(cl(1.45*Math.pow(x/y,3),.2,4)),pois(cl(1.1*Math.pow(y/x,3),.2,4))]}
+function addRes(h,a,gh,ga){const H=S.tb[h],A=S.tb[a];H.p++;A.p++;H.gf+=gh;H.ga+=ga;A.gf+=ga;A.ga+=gh;if(gh>ga){H.w++;A.l++;H.pt+=3}else if(gh<ga){A.w++;H.l++;A.pt+=3}else{H.d++;A.d++;H.pt++;A.pt++}}
+const ranking=()=>S.tb.map((t,i)=>[i,t]).sort((a,b)=>b[1].pt-a[1].pt||(b[1].gf-b[1].ga)-(a[1].gf-a[1].ga));
+
+/* ===== 5. HOẠT ĐỘNG TUẦN ===== */
+function trainAct(k){return{id:'t'+k,t:'Tập '+ST[k].toLowerCase(),d:'+'+ST[k]+' (khó tăng khi đã cao)',e:14,f:()=>{const v=S.st[k];if(S.age>31&&Math.random()<.5)return;if(Math.random()<(95-v)/55)S.st[k]=cl(v+1,0,99)}}}
+const rest={id:'rest',t:'Nghỉ ngơi',d:'+30 thể lực, hồi chấn thương',e:-30,f:()=>{if(S.inj>0&&Math.random()<.5)S.inj--}};
+const ACTS={P:[...Object.keys(ST).map(trainAct),rest,
+{id:'soc',t:'Giao lưu đồng đội',d:'+phòng thay đồ, +thân thiết',e:6,f:()=>{S.chem=cl(S.chem+4);S.tm=cl(S.tm+2);const p=pick(S.teams[S.team].sq.filter(x=>!x.me));p.close=cl(p.close+5);p.trust=cl(p.trust+3);p.mem.push('Cùng đi cà phê (mùa '+S.season+')')}},
+{id:'ad',t:'Quảng cáo, phỏng vấn',d:'+tiền, +danh tiếng',e:8,f:()=>{S.money+=200+S.fame*8;S.fame=cl(S.fame+2)}},
+{id:'lic',t:'Học khóa HLV',d:'+tầm nhìn, +huấn luyện (dùng khi làm HLV)',e:10,f:()=>{S.coach.vis=cl(S.coach.vis+1);S.coach.trn=cl(S.coach.trn+1)}}],
+C:[{id:'trn',t:'Huấn luyện đội',d:'Cầu thủ tăng OVR, +tinh thần đội',e:12,f:()=>{S.teams[S.team].sq.forEach(p=>{if(!p.me&&p.ovr<p.pot&&Math.random()<.35+S.coach.trn/250)p.ovr++});S.tm=cl(S.tm+2);S.coach.trn=cl(S.coach.trn+.6)}},
+{id:'tac',t:'Nghiên cứu chiến thuật',d:'+chiến thuật (tăng hiệu quả sơ đồ)',e:8,f:()=>{S.coach.tac=cl(S.coach.tac+.8)}},
+{id:'sct',t:'Đi scout tài năng',d:'Làm mới danh sách chuyển nhượng',e:8,f:()=>{mkMarket();S.coach.vis=cl(S.coach.vis+.6)}},
+{id:'mt',t:'Họp đội',d:'+phòng thay đồ, +tinh thần đội',e:6,f:()=>{S.chem=cl(S.chem+4);S.tm=cl(S.tm+4);S.coach.hr=cl(S.coach.hr+.6)}},
+{id:'bd',t:'Làm việc với ban lãnh đạo',d:'+ngân sách, +uy tín',e:6,f:()=>{S.budget+=500+Math.round(S.coach.rep*20);S.coach.rep=cl(S.coach.rep+.5)}},rest]};
+
+/* ===== 6. HIỆU ỨNG (sự kiện, hậu quả dài hạn) ===== */
+const LBL={fame:'Danh tiếng',money:'Tiền',morale:'Tinh thần',chem:'Phòng thay đồ',tm:'Tinh thần đội',energy:'Thể lực',form:'Phong độ',budget:'Ngân sách',rep:'Uy tín HLV',tac:'Chiến thuật',trn:'Huấn luyện',hr:'Quản lý nhân sự',vis:'Tầm nhìn'};
+function ap(fx){const o=[];for(const k in fx){const v=fx[k];
+ if(k==='st'){for(const s in v){S.st[s]=cl(S.st[s]+v[s],0,99);o.push(ST[s]+' +'+v[s])}}
+ else if(k==='flag')S.flags[v]=(S.flags[v]||0)+1;
+ else if(k==='later')S.delayed.push({w:v.w,fx:v.fx,msg:v.msg});
+ else if(['close','trust','envy'].includes(k)){const sq=S.teams[S.team].sq,p=(UI.npc&&sq.includes(UI.npc))?UI.npc:pick(sq.filter(x=>!x.me));p[k]=cl(p[k]+v);p.mem.push((UI.modal?UI.modal.t:'Chuyện cũ')+' (mùa '+S.season+')');o.push(p.n+(k==='close'?(v>0?' thân hơn':' xa cách'):k==='trust'?(v>0?' tin bạn hơn':' bớt tin bạn'):' ghen hơn'))}
+ else if(k==='promise'){const p=[...S.teams[S.team].sq].filter(x=>!x.me).sort((a,b)=>b.ovr-a.ovr)[0];S.prom=S.prom||[];S.prom.push({n:p.n,base:p.apps||0,w:8});o.push('Hứa cho '+p.n+' đá chính')}
+ else if(['rep','tac','trn','hr','vis'].includes(k)){S.coach[k]=cl(S.coach[k]+v);o.push(LBL[k]+(v>0?' +':' ')+v)}
+ else{S[k]=(k==='money'||k==='budget')?S[k]+v:cl(S[k]+v);o.push(LBL[k]+(v>0?' +':' ')+v)}}
+ return o}
+
+/* ===== 7. TUẦN: CHỐT HOẠT ĐỘNG -> TRẬN ĐẤU ===== */
+function tog(id){const i=UI.sel.indexOf(id);if(i>=0)UI.sel.splice(i,1);else if(UI.sel.length<3)UI.sel.push(id);render()}
+async function playWeek(quick){if(!UI.sel.length||UI.busy)return;
+ S.snap={fame:S.fame,money:S.money,tm:S.tm,form:S.form,ovr:S.me.ovr,rep:Math.round(S.coach.rep),budget:S.budget};
+ const L=ACTS[S.role];UI.sel.forEach(id=>{const a=L.find(x=>x.id===id);if(a){S.energy=cl(S.energy-a.e);a.f()}});syncMe();
+ const rd=S.fx[S.week-1],mm=rd.find(m=>m[0]===S.team||m[1]===S.team),home=mm[0]===S.team,opp=home?mm[1]:mm[0];
+ if(S.real&&!S.teams[opp].real){UI.busy=1;await ensureSquad(opp);UI.busy=0}
+ const starts=S.role==='C'?(S.lineupSelf&&!S.inj):meStarts();
+ const mins=[];while(mins.length<10){const x=r(3,89);if(!mins.includes(x))mins.push(x)}mins.sort((a,b)=>a-b);
+ UI.m={opp,home,starts,on:false,mins,i:0,sc:[0,0],log:[],perf:0,g:0,a:0,sub:null,ht:false,wait:null,done:false};
+ S.teams[opp].sq.filter(p=>p.grudge).forEach(p=>UI.m.log.push('😠 '+p.n+' (bạn cũ bị bán) đứng ở phía bên kia, ánh mắt không rời bạn.'));UI.quick=!!quick;UI.tab='match';stepM()}
+function mS(){const m=UI.m,C=S.role==='C';let L=lineup(S.team,m.starts||m.on);if(m.sub&&!L.includes(m.sub)){const w=[...L].sort((a,b)=>a.ovr-b.ovr)[0];L=L.map(p=>p===w?m.sub:p)}
+ const mine=str(L,C?S.formation:'4-4-2',C?S.style:'balance',C?S.coach.tac:0),OL=lineup(m.opp,false),op=str(OL,'4-4-2','balance',0),tb=(S.tm-50)/12+(m.home?1.5:0);
+ return{ma:mine.a+tb,md:mine.d+tb,oa:op.a+(m.home?0:1.5)+gr(m.opp),od:op.d+(m.home?0:1.5)+gr(m.opp),L,OL}}
+const gr=ti=>S.teams[ti].sq.filter(p=>p.grudge&&!p.inj).length*2;
+function stepM(){const m=UI.m;if(!m||m.done)return;clearTimeout(UI.t);if(m.wait==='ht')m.wait=null;
+ if(m.i>=10)return endM();
+ if(m.i===5&&!m.ht){m.ht=true;m.log.push('⏸ Hết hiệp 1. Tỉ số '+m.sc.join(' - '));
+  if(S.role==='C'&&!UI.quick){m.wait='ht';return render()}
+  if(S.role==='P'&&!m.starts&&!S.inj){m.on=true;m.log.push('🔁 HLV cho bạn vào sân sau giờ nghỉ!')}}
+ const mn=m.mins[m.i],x=mS(),atk=Math.random()<x.ma/(x.ma+x.oa),att=atk?x.ma:x.oa,def=atk?x.od:x.md,pg=cl(.27*Math.pow(att/def,2.2),.05,.6),w={mn,atk,pg,def,x};
+ const inv=(m.starts||m.on)&&S.role==='P'&&!S.inj,pr=(atk?{FW:.6,MF:.5,DF:.25}:{DF:.6,MF:.4,FW:.15})[S.pos];
+ if(inv&&Math.random()<pr){if(!UI.quick){m.wait=w;return render()}return resM(w,atk?(S.pos==='FW'?'sht':S.pos==='MF'?'pas':'drb'):'def')}
+ resM(w,null)}
+function resM(w,ch){const m=UI.m,T=S.teams[S.team].n,O=S.teams[m.opp].n,lk=Math.min(.08,S.luck*.01);let t='',goal=0,mine=w.atk;
+ const p=(s,k=1)=>cl(((s/110)+((S.energy-50)+(S.morale-50)+(S.form-50))/700-(w.def-50)/300+lk)*k,.08,.9),res=ok=>{if(ok)S.luck=Math.max(0,S.luck-1);else S.luck=Math.min(8,S.luck+1)};
+ if(!ch){goal=Math.random()<w.pg;const who=pick((mine?w.x.L:w.x.OL).filter(q=>q.pos!=='GK'&&!q.me)||[{n:'Cầu thủ'}]).n;
+  t=mine?(goal?`⚽ ${T}: ${who} dứt điểm — VÀO!`:pick(['Pha tấn công của '+T+' bị thủ môn cản phá.','Cú sút của '+who+' đi vọt xà.','Hàng thủ '+O+' dọn bóng kịp thời.'])):(goal?`⚽ ${O}: ${who} đưa bóng vào lưới!`:pick([O+' áp sát nhưng hàng thủ vững vàng.','Thủ môn '+T+' xuất sắc cứu thua.','Cú sút của '+who+' trúng cột dọc.']))}
+ else if(ch==='sht'){const ok=Math.random()<p(S.st.sht,.72);res(ok);if(ok){goal=1;m.g++;m.perf+=2;t='⚽ Bạn dứt điểm hiểm hóc — VÀO!'}else{m.perf-=.3;t='🥅 Cú sút của bạn bị cản phá.'}}
+ else if(ch==='pas'){const ok=Math.random()<p(S.st.pas);res(ok);if(ok){m.perf+=.5;if(Math.random()<.45){goal=1;m.a++;m.perf+=1.2;t='🎯 Đường chuyền xé toang hàng thủ, đồng đội ghi bàn!'}else t='👟 Chuyền chính xác nhưng chưa ai dứt điểm được.'}else{m.perf-=.5;t='❌ Đường chuyền hỏng, mất bóng.'}}
+ else if(ch==='drb'){const ok=Math.random()<p(S.st.drb);res(ok);if(ok){m.perf+=.5;if(Math.random()<.3){goal=1;m.g++;m.perf+=1.5;t='💨 Bạn qua hai người rồi ghi bàn!'}else t='💨 Bạn lừa qua người nhưng pha bóng chưa thành bàn.'}else{m.perf-=.4;t='🛑 Bạn mất bóng khi rê.'}}
+ else{const ok=Math.random()<p(ch==='def'?S.st.def:(S.st.def+S.st.spd)/2*.85);res(ok);if(ok){m.perf+=1;t='🛡 Bạn cản phá thành công, bóng được hóa giải.'}else{m.perf-=.8;goal=Math.random()<cl(w.pg*1.6,.1,.8);t=goal?'😬 Bạn lỡ nhịp, '+O+' ghi bàn.':'😮 Bạn chậm nhịp nhưng đối thủ sút hỏng.'}}
+ if(goal&&!mine&&!ch){const g=S.teams[m.opp].sq.filter(q=>q.grudge&&!q.inj);if(g.length&&Math.random()<.5){t=`⚽ ${O}: ${g[0].n} ghi bàn và ăn mừng không nhìn về phía bạn.`;S.tm=cl(S.tm-2)}}
+ if(goal){if(mine)m.sc[0]++;else m.sc[1]++}
+ m.log.push(`${w.mn}' ${t}`);m.i++;m.wait=null;clearTimeout(UI.t);render();UI.t=setTimeout(stepM,UI.quick?0:S.sp)}
+function ch(c){const m=UI.m,w=m.wait;if(!w||w==='ht')return;m.wait=null;resM(w,c)}
+function qk(){UI.quick=true;const m=UI.m,w=m.wait;if(w&&w!=='ht'){m.wait=null;resM(w,w.atk?(S.pos==='FW'?'sht':S.pos==='MF'?'pas':'drb'):'def')}else stepM()}
+function setStyle(s){S.style=s;render()}function setFm(f){S.formation=f;render()}
+function subIn(i){const b=benchList()[i];if(b){UI.m.sub=b;UI.m.log.push('🔁 Thay người: '+b.n+' vào sân.')}render()}
+function benchList(){const L=lineup(S.team,UI.m.starts);return S.teams[S.team].sq.filter(p=>!p.inj&&!L.includes(p)&&!p.me).sort((a,b)=>b.ovr-a.ovr).slice(0,3)}
+
+/* ===== 8. KẾT THÚC TRẬN, CẬP NHẬT TUẦN ===== */
+function endM(){const m=UI.m;if(m.done)return;m.done=true;clearTimeout(UI.t);const[g,c]=m.sc,res=g>c?'W':g<c?'L':'D',played=(m.starts||m.on);
+ S.fx[S.week-1].forEach(([h,a])=>{const x=(h===S.team||a===S.team)?(m.home?[g,c]:[c,g]):simAI(h,a);addRes(h,a,x[0],x[1])});
+ const O=S.teams[m.opp].n;m.res=res;S.rw[S.role]++;lineup(S.team,m.starts||m.on).forEach(p=>p.apps=(p.apps||0)+1);
+ S.teams[m.opp].sq.forEach(p=>{if(p.grudge){p.mem.push('Gặp lại bạn ở tuần '+S.week+' (mùa '+S.season+')');if(res==='W'&&Math.random()<.4){p.grudge=0;p.trust=cl(p.trust+10);S.flags.beat=(S.flags.beat||0)+1;S.hl.push('bạn thắng đội của '+p.n+' rồi bắt tay hòa giải với cựu đồng đội')}else if(res==='L')S.hl.push(p.n+' trả đũa người cũ, '+O+' thắng bạn ở tuần '+S.week)}});
+ S.tm=cl(S.tm+(res==='W'?6:res==='L'?-6:0));S.morale=cl(S.morale+(res==='W'?5:res==='L'?-5:0));
+ if(S.role==='P'){S.money+=S.sal;if(played){const rt=cl(6+m.perf*.6+(res==='W'?.4:res==='L'?-.3:0)+(Math.random()-.5)*.8,3,10);m.rating=rt;S.rt.push(rt);
+   S.form=cl(S.form+(rt-6.5)*4,10,100);S.fame=cl(S.fame+(rt>=8?3:rt>=7?1:0)+m.g*2);S.goals+=m.g;S.assists+=m.a;S.sg+=m.g;S.energy=cl(S.energy-18);if(res==='W')S.money+=Math.round(S.sal*.5);
+   if(Math.random()<.04+(S.energy<30?.2:0)){S.inj=r(1,4);m.log.push(`🚑 Bạn dính chấn thương, nghỉ ${S.inj} tuần.`)}
+   if(m.g>0)S.hl.push(`tuần ${S.week}, bạn ghi ${m.g} bàn vào lưới ${O}`);if(m.a>1)S.hl.push(`tuần ${S.week}, bạn kiến tạo ${m.a} bàn trước ${O}`)}
+  else{S.form=cl(S.form-2);S.energy=cl(S.energy-4)}}
+ else{S.money+=S.csal;S.budget+=res==='W'?300:0;S.coach.rep=cl(S.coach.rep+(res==='W'?1:res==='L'?-.5:.2));
+  if(S.lineupSelf&&!S.inj){S.form=cl(S.form+(m.starts?2:0));if(res==='W')S.fame=cl(S.fame+1)}
+  if(!S.lineupSelf){S.morale=cl(S.morale-3);S.teams[S.team].sq.forEach(p=>{if(!p.me&&p.ovr>S.me.ovr&&Math.random()<.3)p.envy=cl(p.envy+3)})}}
+ if(res==='W'&&g-c>=3)S.hl.push(`${S.teams[S.team].n} thắng đậm ${O} ${g}-${c} ở tuần ${S.week}`);
+ S.news=headline(res,m,O);S.sum=[['Danh tiếng',S.fame-S.snap.fame],['Tiền',Math.round(S.money-S.snap.money)],['Tinh thần đội',Math.round(S.tm-S.snap.tm)],['Phong độ',Math.round(S.form-S.snap.form)],['OVR',S.me.ovr-S.snap.ovr],['Uy tín HLV',Math.round(S.coach.rep)-S.snap.rep],['Ngân sách',S.budget-S.snap.budget]].filter(x=>x[1]);
+ chk();save();render()}
+function chk(){CFG.ach.forEach(a=>{if(!S.ach.includes(a.id)&&a.f()){S.ach.push(a.id);S.notice.push('🏆 Thành tựu mới: '+a.t)}})}
+function nextWeek(){UI.m=null;S.week++;S.notice=[];
+ S.teams.forEach(t=>t.sq.forEach(p=>{if(p.inj>0)p.inj--}));if(S.inj>0)S.inj--;
+ S.energy=cl(S.energy+25);S.tm=cl(Math.round(S.tm+(S.chem-S.tm)*.15));S.morale=cl(Math.round(S.morale+(S.tm-S.morale)*.3));
+ if(S.week>18)return seasonEnd();
+ S.delayed.forEach(d=>d.w--);promCheck();const f=S.delayed.filter(d=>d.w<=0);S.delayed=S.delayed.filter(d=>d.w>0);f.forEach(d=>{ap(d.fx);S.notice.push('⏳ '+d.msg);S.log.unshift('⏳ '+d.msg)});
+ if(Math.random()<.5){const ok=CFG.ev.filter(e=>(e.r==='A'||e.r===S.role)&&(!e.k||e.k())&&!S.seen.includes(e.t));if(ok.length){const e=pick(ok);S.seen.push(e.t);if(S.seen.length>12)S.seen.shift();openEv(e)}}
+ UI.sel=[];UI.tab='week';save();render();syncReal()}
+function evPick(i){const c=UI.modal.c[i],o=ap(c.fx);S.log.unshift(`📌 ${UI.modal.t}: ${c.t}`);S.notice.push(`📌 ${c.t}: ${c.m}${o.length?' ('+o.join(', ')+')':''}`);UI.modal=null;UI.npc=null;chk();save();render()}
+
+/* ===== 9. HẾT MÙA ===== */
+function seasonEnd(){const o=ranking(),rank=o.findIndex(x=>x[0]===S.team)+1,champ=rank===1,rtv=S.rt.length?S.rt.reduce((a,b)=>a+b,0)/S.rt.length:0,T=S.teams[S.team].n;
+ const credit=S.rw.P>=S.rw.C?'P':'C';let story=[`Mùa ${S.season}: ${T} về đích hạng ${rank}/10${champ?' và lên ngôi vô địch':''}.`];
+ if(champ)S.ti[credit]++;
+ const hl=[...S.hl].sort(()=>Math.random()-.5).slice(0,3);hl.forEach(h=>story.push('Đáng nhớ: '+h+'.'));
+ if(S.sg)story.push(`Bạn ghi ${S.sg} bàn trong mùa này${rtv?', điểm trung bình '+rtv.toFixed(1):''}.`);
+ if(S.rw.P&&S.rw.C)story.push(`Bạn chuyển vai qua lại giữa sân cỏ và ghế huấn luyện, ${S.rw.P} tuần làm cầu thủ, ${S.rw.C} tuần làm HLV.`);
+ const bf=[...S.teams[S.team].sq].filter(p=>!p.me).sort((a,b)=>b.close-a.close)[0];story.push(`${bf.n} vẫn là người thân thiết nhất của bạn trong phòng thay đồ.`);
+ if(rtv>=7.4&&S.sg>=8&&rank<=3){S.balls++;story.push('🏅 Bạn được trao Quả bóng vàng của mùa giải!')}
+ story=story.slice(0,6);
+ S.age++;S.me.age=S.age;S.st&&Object.keys(S.st).forEach(k=>{if(S.age<27&&Math.random()<.5)S.st[k]=cl(S.st[k]+1);if(S.age>31&&['spd','sta'].includes(k))S.st[k]=cl(S.st[k]-r(0,2))});
+ S.teams.forEach((t,ti)=>{t.sq.forEach(p=>{if(p.me)return;p.age++;if(p.age<24)p.ovr=cl(p.ovr+r(0,3),0,p.pot);else if(p.age>31)p.ovr=cl(p.ovr-r(0,2),30,95)});t.sq=t.sq.map(p=>{if(!p.me&&p.age>36){const n=mkP(40+r(0,12),1);n.pos=p.pos;return n}return p})});
+ let retire=false;if(S.age>=35&&!S.ret){S.ret=true;retire=true;S.role='C';S.lineupSelf=false;S.me.inj=99;story.push('Bạn tuyên bố giải nghệ, chuyển hẳn sang ghế HLV với toàn bộ danh tiếng đã có.')}
+ syncMe();S.sal=Math.round(200+S.fame*10+(S.me.ovr-50)*8);S.csal=Math.round(300+S.coach.rep*12);S.budget+=1500;
+ S.season++;S.week=1;S.fx=mkFix(10);S.tb=newTb();S.sg=0;S.rt=[];S.rw={P:0,C:0};S.hl=[];mkMarket();reunion();S.energy=100;
+ chk();UI.se={rank,champ,story,table:o};UI.m=null;UI.sel=[];UI.tab='week';if(S.ret&&S.age>=65){UI.end=true}save();render()}
+function copyStory(){const t=UI.se.story.join('\n');try{navigator.clipboard.writeText(t)}catch(e){}const b=$('#cp');if(b)b.textContent='Đã copy ✓'}
+
+/* ===== 10. CHUYỂN VAI, CHUYỂN NHƯỢNG ===== */
+function sw(){if(S.ret||UI.m&&!UI.m.done)return;S.role=S.role==='P'?'C':'P';S.sw++;UI.sel=[];S.notice=[];
+ if(S.role==='P'){if(S.chem<40){S.tm=cl(S.tm-5);S.notice.push('🥶 Phòng thay đồ lạnh nhạt với bạn sau những quyết định gần đây.')}if(S.flags.sold){S.chem=cl(S.chem-3);S.notice.push('😒 Vài đồng đội vẫn chưa quên chuyện bạn bán người thân thiết khi làm HLV.')}}
+ else if(S.flags.scandal){S.budget-=800;S.notice.push('📉 Tai tiếng cũ khiến ban lãnh đạo e ngại, giá tuyển người cao hơn.');mkMarket()}
+ chk();save();render()}
+function buy(i){const p=S.market[i],sq=S.teams[S.team].sq;if(S.role!=='C'||S.budget<p.price||sq.length>=22)return;S.budget-=p.price;delete p.price;sq.push(p);S.market.splice(i,1);S.notice=['✅ Đã ký '+p.n];if(p.ex){p.ex=0;if(p.grudge){p.grudge=0;p.trust=cl(p.trust+25);p.close=cl(p.close+20);S.flags.rc=(S.flags.rc||0)+1;S.hl.push('cựu thù '+p.n+' trở lại làm đồng đội của bạn');S.notice=['🤝 '+p.n+' từng hận bạn vì bị bán, nay đã trở lại làm đồng đội.']}else S.notice=['🔁 Bạn cũ '+p.n+' đã trở về.']}save();render()}
+function sell(n){const sq=S.teams[S.team].sq,i=sq.findIndex(p=>p.n===n&&!p.me);if(S.role!=='C'||i<0||sq.length<=18)return;const p=sq[i];S.budget+=Math.round(p.ovr*p.ovr/3);sq.splice(i,1);toRival(p);
+ if(p.close>60){S.chem=cl(S.chem-10);S.flags.sold=(S.flags.sold||0)+1;sq.slice(0,3).forEach(q=>{if(!q.me){q.trust=cl(q.trust-4);q.mem.push('Bất bình vì '+p.n+' bị bán')}});S.notice=['💔 Bán '+p.n+', người thân thiết, khiến phòng thay đồ chùng xuống.']}else S.notice=['💰 Đã bán '+p.n];
+ save();render()}
+function togSelf(){S.lineupSelf=!S.lineupSelf;render()}
+
+/* ===== 11. GIAO DIỆN ===== */
+const TABS=[['week','Tuần'],['char','Nhân vật'],['squad','Đội hình'],['table','Lịch & BXH'],['tr','Chuyển nhượng'],['rel','Quan hệ'],['ach','Thành tựu'],['set','Cài đặt']];
+function tab(t){UI.tab=t;render();if(t==='table'&&S&&S.real)loadReal()}
+function render(){const A=$('#app');if(UI.end&&S)return A.innerHTML=endView();if(!S)return A.innerHTML=menu();
+ A.innerHTML=head()+'<main>'+(UI.se?seView():(UI.modal?modal():'')+view())+'</main>'+(UI.se?'':'<nav>'+TABS.map(t=>`<button class="${UI.tab===t[0]?'on':''}" onclick="tab('${t[0]}')">${t[1]}</button>`).join('')+'</nav>')}
+function head(){const lock=S.ret||(UI.m&&!UI.m.done);return`<header><div><b>Mùa ${S.season} · Tuần ${Math.min(S.week,18)}/18</b><small>${S.name} · ${S.age} tuổi · ${S.teams[S.team].n}</small></div><div>💰 ${Math.round(S.money).toLocaleString('vi-VN')}</div><button class="role" ${lock?'disabled':''} onclick="sw()">${S.ret?'📋 HLV':S.role==='P'?'⚽ → 📋 Làm HLV':'📋 → ⚽ Làm cầu thủ'}</button></header>`}
+function menu(){let h='<h2 style="margin-top:20px">⚽ Sự nghiệp: Cầu thủ &amp; HLV</h2><p class="mu">Chơi cầu thủ, rồi chuyển sang HLV bất cứ lúc nào. Mỗi quyết định để lại hậu quả ở vai kia.</p>';
+ for(let i=1;i<=3;i++){const g=load(i);h+=`<div class="card"><b>Slot ${i}</b>`+(g?`<p class="mu">${g.name} · Mùa ${g.season} · ${g.age} tuổi · ${g.role==='P'?'Cầu thủ':'HLV'} · ${g.teams[g.team].n}</p><div class="grid"><button class="pri" onclick="loadGame(${i})">Tiếp tục</button><button onclick="if(confirm('Xóa save này?'))del(${i})">Xóa</button></div>`:(UI.nw===i?`<input id="nn" placeholder="Tên nhân vật" maxlength="24" value="${UI.nn||''}"><select id="np"><option value="FW">Tiền đạo</option><option value="MF">Tiền vệ</option><option value="DF">Hậu vệ</option></select>${UI.mode==='real'&&!UI.rl?'':`<select id="nt">${(UI.rl?UI.rl.teams.map(t=>t.name+' (hạng '+t.rank+')'):CFG.teams).map((t,k)=>`<option value="${k}">${t}</option>`).join('')}</select>`}<select id="nm" onchange="UI.nn=$('#nn').value;UI.mode=this.value;UI.rl=null;UI.err='';render()"><option value="sim"${UI.mode==='real'?'':' selected'}>Thế giới ảo (offline)</option><option value="real"${UI.mode==='real'?' selected':''}>Thế giới thật (cần deploy Vercel)</option></select>${UI.mode==='real'?`<select id="nl">${CFG.leagues.map(l=>`<option value="${l.id}"${UI.lg===l.id?' selected':''}>${l.n}</option>`).join('')}</select>`:''}${UI.err?`<p style="color:var(--r)">${UI.err}</p>`:''}<button class="pri" style="width:100%" onclick="goNew(${i})">${UI.mode==='real'&&!UI.rl?'Tải danh sách đội':'Bắt đầu sự nghiệp'}</button>`:`<p class="mu">Slot trống</p><button class="ok" onclick="UI.nw=${i};render()">Tạo nhân vật mới</button>`))+'</div>'}
+ return h}
+function modal(){const e=UI.modal;return`<div class="modal"><h3>${e.t}</h3><p>${e.d}</p>${e.c.map((c,i)=>`<button onclick="evPick(${i})">${c.t}</button>`).join('')}</div>`}
+function view(){if(UI.tab==='match'&&UI.m)return mView();const f={week:wView,char:cView,squad:sqView,table:tbView,tr:trView,rel:relView,ach:achView,set:setView}[UI.tab];return f()}
+function wView(){const rd=S.fx[S.week-1],mm=rd.find(m=>m[0]===S.team||m[1]===S.team),opp=mm[0]===S.team?mm[1]:mm[0],rk=ranking().findIndex(x=>x[0]===S.team)+1,L=ACTS[S.role];
+ let h=S.news?`<div class="card">📰 ${S.news}</div>`:'';if(S.notice.length)h+=`<div class="card">${S.notice.map(n=>`<div>${n}</div>`).join('')}</div>`;
+ if(S.sum&&S.sum.length)h+=`<div class="card"><h3>Tuần trước nhích lên</h3>${S.sum.map(x=>`<span class="chip ${x[1]>0?'up':'dn'}">${x[0]} ${x[1]>0?'+':''}${x[1]}</span>`).join('')}</div>`;
+ h+=`<div class="card"><div class="row"><h3>Trận tuần này</h3><span class="chip">Hạng ${rk}/10</span></div><p>${mm[0]===S.team?'Sân nhà':'Sân khách'} gặp <b>${S.teams[opp].n}</b></p><div class="grid"><div>Thể lực ${Math.round(S.energy)}${bar(S.energy,'var(--g)')}</div><div>Tinh thần đội ${Math.round(S.tm)}${bar(S.tm,'var(--b)')}</div><div>Phong độ ${Math.round(S.form)}${bar(S.form,'var(--y)')}</div><div>Phòng thay đồ ${Math.round(S.chem)}${bar(S.chem,'#a78bfa')}</div></div>${S.inj>0?`<p style="color:var(--r)">🚑 Bạn đang chấn thương (${S.inj} tuần).</p>`:''}</div>`;
+ h+=pend()+`<div class="card"><h3>Chọn tối đa 3 hoạt động (${UI.sel.length}/3)</h3><div class="grid">${L.map(a=>`<button class="${UI.sel.includes(a.id)?'sel':''}" onclick="tog('${a.id}')"><b>${a.t}</b><br><small class="mu">${a.d}</small></button>`).join('')}</div></div>`;
+ return h+`<div class="grid"><button class="pri" ${UI.sel.length?'':'disabled'} onclick="playWeek(false)">Chốt tuần, vào trận</button><button ${UI.sel.length?'':'disabled'} onclick="playWeek(true)">⏩ Mô phỏng nhanh</button></div>`}
+function mView(){const m=UI.m,T=S.teams[S.team].n,O=S.teams[m.opp].n,l=m.home?[T,O,m.sc[0],m.sc[1]]:[O,T,m.sc[1],m.sc[0]],pg=m.done?100:m.i?m.mins[m.i-1]/90*100:0;
+ let h=`<div class="card"><div class="row"><b>${l[0]}</b><b>${l[1]}</b></div><div class="score">${l[2]} - ${l[3]}</div>${bar(pg,'var(--y)')}<div class="mu" style="text-align:center;margin-top:4px">${m.done?'Hết giờ':(m.i?m.mins[m.i-1]:0)+"'"}${S.role==='P'&&!m.starts&&!m.on?' · bạn ngồi dự bị':''}</div></div>`;
+ h+=`<div class="card log">${m.log.slice().reverse().map(x=>`<div>${x}</div>`).join('')||'<div class="mu">Trọng tài thổi còi khai cuộc…</div>'}</div>`;
+ if(m.done){const rs={W:'THẮNG 🎉',D:'HÒA',L:'THUA'}[m.res];h+=`<div class="card"><h3>${rs}</h3>${m.rating?`<p>Điểm của bạn: <b>${m.rating.toFixed(1)}</b> · ${m.g} bàn · ${m.a} kiến tạo</p>`:''}${S.sum?S.sum.map(x=>`<span class="chip ${x[1]>0?'up':'dn'}">${x[0]} ${x[1]>0?'+':''}${x[1]}</span>`).join(''):''}</div><button class="pri" style="width:100%" onclick="nextWeek()">Tuần tiếp theo</button>`}
+ else if(m.wait==='ht')h+=`<div class="card"><h3>Giờ nghỉ: đổi chiến thuật</h3><div class="grid">${Object.keys(CFG.sy).map(k=>`<button class="${S.style===k?'sel':''}" onclick="setStyle('${k}')">${CFG.sy[k][2]}</button>`).join('')}${Object.keys(CFG.fm).map(k=>`<button class="${S.formation===k?'sel':''}" onclick="setFm('${k}')">${k}</button>`).join('')}</div><h3 style="margin-top:12px">Thay người${m.sub?' (đã thay)':''}</h3>${m.sub?`<p>${m.sub.n} đã vào sân.</p>`:benchList().map((p,i)=>`<button style="width:100%;margin-top:6px" onclick="subIn(${i})">${p.n} · ${p.pos} · OVR ${p.ovr}</button>`).join('')}<button class="pri" style="width:100%;margin-top:10px" onclick="stepM()">Bắt đầu hiệp 2</button></div>`;
+ else if(m.wait){const a=m.wait.atk;h+=`<div class="card modal"><h3>${m.wait.mn}' Bóng đến chân bạn!</h3>${a?`<button onclick="ch('sht')">🥅 Sút</button><button onclick="ch('pas')">👟 Chuyền</button><button onclick="ch('drb')">💨 Rê bóng</button>`:`<p>Đối thủ đang áp sát khung thành.</p><button onclick="ch('def')">🛡 Tắc bóng</button><button onclick="ch('cov')">🏃 Kèm chặt, chặn đường</button>`}</div>`}
+ else h+=`<button style="width:100%" onclick="qk()">⏩ Mô phỏng nhanh</button>`;return h}
+function cView(){const rt=S.rt.length?(S.rt.reduce((a,b)=>a+b,0)/S.rt.length).toFixed(1):'-';
+ return`<div class="card"><h3>${S.name} · ${S.pos} · OVR ${S.me.ovr}</h3>${Object.keys(ST).map(k=>`<div class="row"><span>${ST[k]}</span><b>${S.st[k]}</b></div>${bar(S.st[k])}`).join('')}</div>
+ <div class="card"><div class="row"><span>Danh tiếng</span><b>${Math.round(S.fame)}</b></div>${bar(S.fame,'var(--y)')}<div class="row"><span>Phong độ</span><b>${Math.round(S.form)}</b></div>${bar(S.form,'var(--g)')}<div class="row"><span>Tinh thần</span><b>${Math.round(S.morale)}</b></div>${bar(S.morale)}<p class="mu">Bàn thắng ${S.goals} · Kiến tạo ${S.assists} · Điểm TB mùa ${rt}<br>Lương tuần: ${S.role==='P'?S.sal:S.csal} · Ngân sách đội: ${Math.round(S.budget).toLocaleString('vi-VN')}</p></div>
+ <div class="card"><h3>Chỉ số HLV</h3>${[['tac','Chiến thuật'],['trn','Huấn luyện'],['hr','Quản lý nhân sự'],['vis','Tầm nhìn'],['rep','Uy tín']].map(k=>`<div class="row"><span>${k[1]}</span><b>${Math.round(S.coach[k[0]])}</b></div>${bar(S.coach[k[0]],'#a78bfa')}`).join('')}</div>`}
+function sqView(){const C=S.role==='C',sq=[...S.teams[S.team].sq].sort((a,b)=>b.ovr-a.ovr);let h='';
+ if(C&&!S.ret)h+=`<div class="card"><h3>Chiến thuật</h3><div class="grid">${Object.keys(CFG.fm).map(k=>`<button class="${S.formation===k?'sel':''}" onclick="setFm('${k}')">${k}</button>`).join('')}${Object.keys(CFG.sy).map(k=>`<button class="${S.style===k?'sel':''}" onclick="setStyle('${k}')">${CFG.sy[k][2]}</button>`).join('')}</div><button style="width:100%;margin-top:8px" onclick="togSelf()">Nhân vật của bạn: ${S.lineupSelf?'ĐÁ CHÍNH (bấm để cho dự bị)':'DỰ BỊ (bấm để cho đá chính)'}</button></div>`;
+ return h+`<div class="card"><h3>${S.teams[S.team].n} (${sq.length} cầu thủ)${S.real?(S.teams[S.team].real===1?' · tên thật':' · cầu thủ hư cấu'):''}</h3>${sq.filter(p=>!p.inj||p.inj<99).map(p=>`<div class="row" style="padding:6px 0;${p.me?'color:var(--y)':''}"><span>${p.n}<br><small class="mu">${p.pos} · ${p.age} tuổi · ${p.tr}${p.inj?' · 🚑'+p.inj:''}</small></span><span><b>${p.ovr}</b> <small class="mu">/${p.me?'-':p.pot}</small></span></div>`).join('')}</div>`}
+function tbView(){return tbView0()+realView()}function tbView0(){const rd=S.fx[Math.min(S.week,18)-1],o=ranking();return`<div class="card"><h3>Bảng xếp hạng</h3><table><tr><th>#</th><th>Đội</th><th>Tr</th><th>T</th><th>H</th><th>B</th><th>HS</th><th>Đ</th></tr>${o.map((x,i)=>`<tr class="${x[0]===S.team?'me':''}"><td>${i+1}</td><td>${S.teams[x[0]].n}</td><td>${x[1].p}</td><td>${x[1].w}</td><td>${x[1].d}</td><td>${x[1].l}</td><td>${x[1].gf-x[1].ga}</td><td><b>${x[1].pt}</b></td></tr>`).join('')}</table></div><div class="card"><h3>Vòng ${Math.min(S.week,18)}</h3>${rd.map(m=>`<div class="${m.includes(S.team)?'':'mu'}">${S.teams[m[0]].n} - ${S.teams[m[1]].n}</div>`).join('')}</div>`}
+function trView(){if(S.role!=='C')return`<div class="card"><h3>Chuyển nhượng</h3><p class="mu">Chỉ HLV mới mua bán cầu thủ. Hãy bấm nút chuyển vai ở trên. Nhưng nhớ rằng người bạn bán sẽ khiến bạn nhớ mãi khi quay lại sân cỏ.</p></div>`;
+ const sq=S.teams[S.team].sq;return`<div class="card"><h3>Ngân sách: ${Math.round(S.budget).toLocaleString('vi-VN')}</h3><p class="mu">Thị trường hôm nay (scout để làm mới)</p>${S.market.map((p,i)=>`<div class="row" style="padding:6px 0"><span>${p.n}${p.ex?' 🔁 bạn cũ':''}<br><small class="mu">${p.pos} · ${p.age}t · OVR ${p.ovr}/${p.pot}</small></span><button class="ok" ${S.budget<p.price||sq.length>=22?'disabled':''} onclick="buy(${i})">${p.price}</button></div>`).join('')||'<p class="mu">Trống. Hãy đi scout.</p>'}</div><div class="card"><h3>Bán cầu thủ</h3>${[...sq].filter(p=>!p.me).sort((a,b)=>a.ovr-b.ovr).map(p=>`<div class="row" style="padding:6px 0"><span>${p.n}<br><small class="mu">${p.pos} · OVR ${p.ovr} · thân thiết ${p.close}</small></span><button ${sq.length<=18?'disabled':''} onclick="sell('${p.n.replace(/'/g,"\\'")}')">Bán ${Math.round(p.ovr*p.ovr/3)}</button></div>`).join('')}</div>`}
+function relView(){return exView()+`<div class="card"><h3>Quan hệ</h3>${[...S.teams[S.team].sq].filter(p=>!p.me).sort((a,b)=>b.close-a.close).map(p=>`<div style="padding:7px 0"><div class="row"><b>${p.n}</b><small class="mu">${p.tr}</small></div><div class="grid"><small>Tin tưởng${bar(p.trust,'var(--g)')}</small><small>Thân thiết${bar(p.close,'var(--b)')}</small></div>${p.envy>30?`<small style="color:var(--y)">Hơi ghen tị với bạn</small>`:''}${p.mem.length?`<div class="mu"><small>Nhớ: ${p.mem[p.mem.length-1]}</small></div>`:''}</div>`).join('')}</div>`}
+function achView(){return`<div class="card"><h3>Thành tựu (${S.ach.length}/${CFG.ach.length})</h3>${CFG.ach.map(a=>`<div class="row" style="padding:6px 0;${S.ach.includes(a.id)?'':'opacity:.4'}"><span>${S.ach.includes(a.id)?'🏆':'🔒'} ${a.t}</span></div>`).join('')}<p class="mu">Danh hiệu: vô địch cầu thủ ${S.ti.P} · vô địch HLV ${S.ti.C} · Quả bóng vàng ${S.balls}</p></div>`}
+function setView(){return`<div class="card"><h3>Tốc độ mô phỏng</h3><div class="grid">${[[1400,'Chậm'],[900,'Vừa'],[350,'Nhanh']].map(x=>`<button class="${S.sp===x[0]?'sel':''}" onclick="S.sp=${x[0]};save();render()">${x[1]}</button>`).join('')}</div></div><div class="card"><h3>Chế độ thế giới</h3><p class="mu">${S.real?'Thế giới thật: '+S.real.ln+' (đội và BXH thật, trận của bạn vẫn mô phỏng).':'Thế giới ảo (offline hoàn toàn).'}</p>${S.real?'<button style="width:100%" onclick="loadReal()">Làm mới dữ liệu thật</button>':''}</div><div class="card"><button style="width:100%" onclick="S=null;UI.m=null;render()">Về menu chính</button><button style="width:100%;margin-top:8px" onclick="if(confirm('Xóa save này?')){del(UI.slot);S=null;render()}">Xóa save hiện tại</button><button style="width:100%;margin-top:8px" onclick="if(confirm('Kết thúc sự nghiệp?')){UI.end=true;render()}">Kết thúc sự nghiệp, xem tổng kết</button></div>`}
+function seView(){const s=UI.se;return`<div class="card"><h2>Câu chuyện mùa giải</h2>${s.story.map(x=>`<p>${x}</p>`).join('')}<div class="grid"><button id="cp" onclick="copyStory()">Copy để chia sẻ</button><button class="pri" onclick="UI.se=null;render()">Sang mùa ${S.season}</button></div></div><div class="card"><h3>Bảng xếp hạng cuối mùa</h3><table>${s.table.map((x,i)=>`<tr class="${x[0]===S.team?'me':''}"><td>${i+1}</td><td>${S.teams[x[0]].n}</td><td><b>${x[1].pt}</b></td></tr>`).join('')}</table></div>`}
+function endView(){return`<h2 style="margin-top:20px">Tổng kết sự nghiệp: ${S.name}</h2><div class="card"><p>${S.season-1} mùa giải · ${S.age} tuổi · OVR cao nhất ${S.me.ovr}</p><p>Bàn thắng ${S.goals} · Kiến tạo ${S.assists} · Danh tiếng ${Math.round(S.fame)}</p><p>Vô địch cầu thủ ${S.ti.P} · vô địch HLV ${S.ti.C} · Quả bóng vàng ${S.balls}</p><p>Thành tựu: ${S.ach.length}/${CFG.ach.length}${S.ti.P&&S.ti.C?'<br>🏆 Người làm được cả hai!':''}</p></div><button class="pri" style="width:100%" onclick="UI.end=null;S=null;render()">Về menu chính</button>`}
+render();
+</script></body></html>
