@@ -1,12 +1,14 @@
 const C = require('./_config');
 let remaining = null; // đọc từ header x-ratelimit-requests-remaining
 
-// Mùa giải: từ tháng 7 trở đi dùng năm hiện tại, trước đó dùng năm trước. Có thể ép bằng ?season=2025
+// Mùa giải mặc định. Gói free của API-Football chỉ cho 2022-2024.
+// Khi nâng gói, thêm biến môi trường SEASON (vd 2026) trên Vercel là xong, không cần sửa code.
+const DEFAULT_SEASON = parseInt(process.env.SEASON, 10) || 2024;
+
+// Có thể ép mùa bằng ?season=2023
 const season = (q) => {
   const s = parseInt(q.season, 10);
-  if (s > 2000 && s < 2100) return s;
-  const d = new Date();
-  return d.getUTCMonth() >= 6 ? d.getUTCFullYear() : d.getUTCFullYear() - 1;
+  return s > 2000 && s < 2100 ? s : DEFAULT_SEASON;
 };
 
 const leagueOf = (q) => { const l = parseInt(q.league, 10); return C.LEAGUES[l] ? l : null; };
