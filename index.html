@@ -526,5 +526,153 @@ const _nw=nextWeek;nextWeek=function(){_nw();if(!S||UI.end)return;
   if(S.week===1||S.week===10||S.listed)genOffers()}
  save();render()};
 const _se=seasonEnd;seasonEnd=function(){_se();if(S.mode!=='C'&&S.ret){UI.end=true;UI.se=null;save();render()}};
+/* ===== 13. ĐỢT 5: ÂM THANH, ÁO ĐẤU, ĐỘI TUYỂN, THĂNG/XUỐNG HẠNG + CÚP, XUẤT THÂN, HLV SÂU HƠN, DERBY ===== */
+LBL.bd='Niềm tin ban lãnh đạo';
+const DIV2=['Phú Yên','Long An','Khánh Hòa','Đồng Nai','Kon Tum','Bình Định','Tiền Giang','Gia Lai','Vĩnh Phúc','Bắc Ninh'],EU=['Ajax','Benfica','Porto','Lyon','Dortmund','Sevilla','Celtic','Galatasaray'];
+const BGS={P:{poor:['Nhà nghèo hiếu học','thể lực +5, ít tiền'],rich:['Con nhà khá giả','có 8000 khởi điểm'],acad:['Lò đào tạo trẻ','HLV tin sẵn, quen đồng đội'],street:['Đá phủi đường phố','rê +6, phòng ngự -4']},C:{star:['Cựu ngôi sao','danh tiếng và uy tín cao'],book:['Nhà chiến thuật','chiến thuật +15'],lock:['Người phòng thay đồ','nhân sự +15'],data:['Nhà phân tích','tầm nhìn +15']}};
+const TRS={P:{hot:['Nóng tính','sút +4, hay dính rắc rối'],calm:['Điềm tĩnh','chuyền +4, tinh thần vững'],lead:['Thủ lĩnh','phòng thay đồ +10'],fun:['Ham vui','hạnh phúc +10']},C:{iron:['Kỷ luật thép','huấn luyện +8'],ear:['Biết lắng nghe','nhân sự +8'],gam:['Liều lĩnh','chiến thuật +8'],cool:['Điềm đạm','uy tín +8']}};
+CFG.ach.push({id:'nt',t:'Lên đội tuyển quốc gia',f:()=>S.nt&&S.nt.caps>0},{id:'ntc',t:'Vô địch cùng đội tuyển',f:()=>S.nt&&S.nt.titles>0},{id:'cup',t:'Vô địch cúp',f:()=>S.ti.cup>0},{id:'pr',t:'Thăng hạng cùng đội bóng',f:()=>S.flags.promo>0},{id:'dby',t:'Thắng derby',f:()=>S.flags.derbyW>0});
+CFG.ev.push(
+Ek(()=>MD()==='P'&&S.trt==='hot',E('P','Cãi nhau với trọng tài','Máu nóng bốc lên sau một quyết định gây tranh cãi.',['Xin lỗi ngay',{fame:-1,chem:2},'Bạn hạ nhiệt kịp lúc.'],['Làm tới cùng',{fame:3,chem:-3,form:-3,later:{w:3,fx:{money:-800},msg:'Bạn bị phạt tiền sau pha phản ứng.'}},'Khán đài hò reo, ban kỷ luật thì không.'])),
+E('C','Họp báo trước trận','Phóng viên hỏi về mục tiêu của bạn mùa này.',['Tuyên bố tham vọng',{tm:4,rep:1,later:{w:6,fx:{rep:-2},msg:'Lời tuyên bố tham vọng bị nhắc lại khi đội sa sút.'}},'Cả đội phấn chấn.'],['Khiêm tốn thận trọng',{rep:1,tm:1},'Không ai bất ngờ.'],['Né câu hỏi',{rep:-1},'Báo chí chê bạn thiếu bản lĩnh.']),
+E('C','Ban lãnh đạo gặp riêng','Chủ tịch hỏi kế hoạch của bạn cho phần còn lại của mùa.',['Hứa hẹn thành tích',{bd:8,tm:-2},'Họ hài lòng, nhưng áp lực tăng.'],['Nói thẳng khó khăn',{bd:-2,rep:2},'Họ ghi nhận sự trung thực.']),
+E('C','Cầu thủ chê chiến thuật','Một trụ cột nói thẳng chiến thuật của bạn khiến anh ta khó chịu.',['Nghe và điều chỉnh',{trust:6,tac:1},'Anh ấy thấy mình được tôn trọng.'],['Giữ nguyên quan điểm',{trust:-5,rep:1},'Bạn vẫn là người quyết định.'])
+);
+
+/* ----- Âm thanh (Web Audio, không cần file) ----- */
+const SFX={ctx:null,on:true,crowd:null,
+ init(){if(this.ctx)return;try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;const c=this.ctx=new C(),b=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const n=c.createBufferSource();n.buffer=b;n.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=650;const g=c.createGain();g.gain.value=0;n.connect(f);f.connect(g);g.connect(c.destination);n.start();this.crowd={g}}catch(e){}},
+ amb(v){if(this.crowd&&this.on)this.crowd.g.gain.setTargetAtTime(v,this.ctx.currentTime,.35)},
+ tone(fr,d,v){if(!this.ctx||!this.on)return;const c=this.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=fr;o.type='sine';g.gain.value=v;o.connect(g);g.connect(c.destination);o.start();g.gain.setTargetAtTime(0,c.currentTime+d*.7,.05);o.stop(c.currentTime+d)},
+ whistle(){this.tone(2900,.25,.12);setTimeout(()=>this.tone(2900,.45,.12),320)},
+ roar(){if(this.crowd&&this.on){this.crowd.g.gain.setTargetAtTime(.55,this.ctx.currentTime,.05);setTimeout(()=>this.amb(.06),1800)}}};
+if(typeof document.addEventListener==='function'){document.addEventListener('click',()=>SFX.init(),{once:true});document.addEventListener('touchstart',()=>SFX.init(),{once:true})}
+const _pw=playWeek;playWeek=async function(q){await _pw(q);SFX.whistle()};
+const _tk=tickMo;tickMo=function(){_tk();const m=UI.m;SFX.amb(.03+Math.abs(PV.mo)*.07);if(S.as&&S.as.fit&&m.fat)m.fat*=.992};
+const _rs2=resM;resM=function(w,ch){const s0=UI.m.sc.join();_rs2(w,ch);const m=UI.m;if(m.sc.join()!==s0){SFX.roar();const mine=m.sc[0]>+s0.split(',')[0];setTimeout(()=>{PV.atk={atk:mine,t0:performance.now(),dur:2600};PV.rp=performance.now()+2600},1000)}};
+const _em2=endM;endM=function(){const m=UI.m;if(!m||m.done)return;_em2();SFX.whistle();SFX.amb(0)};
+const _sv=setView;setView=function(){return _sv()+`<div class="card"><h3>🔊 Âm thanh</h3><button style="width:100%" onclick="S.snd=(S.snd===false);SFX.on=S.snd!==false;if(!SFX.on)SFX.amb(0);save();render()">${S.snd===false?'Đang tắt. Bấm để bật':'Đang bật. Bấm để tắt'}</button></div>`};
+
+/* ----- Áo đấu, số áo, tên cầu thủ, camera zoom, quay chậm ----- */
+const kit=ti=>{const n=S.teams[ti].n;let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return{a:`hsl(${h},75%,50%)`,b:`hsl(${(h+180)%360},70%,94%)`}};
+function roster(ti,fm,withMe,sub){const f=FM[fm]||FM['4-4-2'];let L=lineup(ti,withMe);if(sub&&!L.includes(sub)){const w=[...L].sort((a,b)=>a.ovr-b.ovr)[0];L=L.map(p=>p===w?sub:p)}
+ const gk=L.filter(p=>p.pos==='GK'),by={DF:L.filter(p=>p.pos==='DF'),MF:L.filter(p=>p.pos==='MF'),FW:L.filter(p=>p.pos==='FW')},used=new Set(),out=[],take=pos=>{let p=(pos==='GK'?gk:by[pos]).find(x=>!used.has(x));if(!p)p=L.find(x=>!used.has(x));if(p)used.add(p);return p||{n:'—',ovr:50}};
+ out.push(take('GK'));['DF','MF','FW'].forEach((pos,li)=>{for(let k=0;k<f[li];k++)out.push(take(pos))});return out}
+function draw(c){const m=UI.m,w=c.clientWidth;if(!w||!m)return;const h=Math.round(w*.62);if(c.width!==w*2){c.width=w*2;c.height=h*2;c.style.height=h+'px'}
+ const g=c.getContext('2d'),W=c.width,H=c.height,t=performance.now(),mo=PV.mo,withMe=m.starts||m.on,fm=S.role==='C'?S.formation:'4-4-2',key=fm+'|'+withMe+'|'+(m.sub?m.sub.n:'');
+ if(m.rk!==key){m.rk=key;m.rm=roster(S.team,fm,withMe,m.sub);m.ro=roster(m.opp,'4-4-2',0)}
+ const my=lay(fm,1),op=lay('4-4-2',0),pos=(p,col,i)=>({x:(p.x+mo*.06*(p.l==='GK'?0:1)*(col===1?1:-1)+Math.sin(t/650+i*1.7)*.008)*W,y:(p.y*.86+.07+Math.cos(t/800+i)*.012)*H}),A=my.map((p,i)=>pos(p,1,i)),B=op.map((p,i)=>pos(p,2,i+20)),mi=S.role==='P'?m.rm.findIndex(p=>p.me):-1;
+ let bx,by;const a=PV.atk;
+ if(m.wait&&m.wait!=='ht'&&mi>=0){bx=A[mi].x/W;by=A[mi].y/H}
+ else if(a){const pr=Math.min(1,(t-a.t0)/a.dur),pts=a.atk?[[.45,.5],[.6,.3],[.78,.55],[.96,.5]]:[[.55,.5],[.4,.7],[.22,.45],[.04,.5]],sg=pr*3,k=Math.min(2,Math.floor(sg)),f=sg-k;bx=pts[k][0]+(pts[k+1][0]-pts[k][0])*f;by=pts[k][1]+(pts[k+1][1]-pts[k][1])*f}
+ else{const side=mo>=0?A:B;if(!PV.tg||PV.tgs!==(mo>=0)||t>PV.nt){const d=side[Math.floor(Math.random()*side.length)];PV.tg={x:d.x/W,y:d.y/H};PV.tgs=mo>=0;PV.nt=t+500+Math.random()*500}bx=PV.bx+(PV.tg.x-PV.bx)*.08;by=PV.by+(PV.tg.y-PV.by)*.08}
+ PV.bx=bx;PV.by=by;
+ const z=1+.32*Math.min(1,Math.max(0,Math.abs(bx-.5)-.28)/.18),tx=Math.min(0,Math.max(W-W*z,W/2-bx*W*z)),ty=Math.min(0,Math.max(H-H*z,H/2-by*H*z));g.setTransform(z,0,0,z,tx,ty);
+ for(let i=0;i<10;i++){g.fillStyle=i%2?'#157a3a':'#188a43';g.fillRect(i*W/10,0,W/10+1,H)}
+ g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=3;g.strokeRect(12,12,W-24,H-24);g.beginPath();g.moveTo(W/2,12);g.lineTo(W/2,H-12);g.stroke();g.beginPath();g.arc(W/2,H/2,H*.15,0,7);g.stroke();g.strokeRect(12,H*.27,W*.14,H*.46);g.strokeRect(W-12-W*.14,H*.27,W*.14,H*.46);g.fillStyle='#fff';g.fillRect(4,H*.42,8,H*.16);g.fillRect(W-12,H*.42,8,H*.16);
+ const ka=kit(S.team),kb=kit(m.opp),dr=(P,k,col)=>P.forEach((p,i)=>{const me=col===1&&i===mi;g.beginPath();g.arc(p.x,p.y,me?16:12,0,7);g.fillStyle=me?'#ffd24a':k.a;g.fill();g.lineWidth=me?4:2;g.strokeStyle=me?'#fff':'rgba(0,0,0,.5)';g.stroke();g.fillStyle=me?'#201600':k.b;g.font='bold 14px system-ui';g.textAlign='center';g.fillText(i+1,p.x,p.y+5)});
+ dr(A,ka,1);dr(B,kb,2);
+ const side=a?(a.atk?A:B):(mo>=0?A:B),R=side===A?m.rm:m.ro;let bi=-1,bd=1e9;side.forEach((p,i)=>{const d=Math.hypot(p.x-bx*W,p.y-by*H);if(d<bd){bd=d;bi=i}});
+ if(bi>=0&&bd<W*.09&&R[bi]){g.fillStyle='#fff';g.font='bold 15px system-ui';g.textAlign='center';g.fillText((R[bi].n||'').split(' ').slice(-1)[0],side[bi].x,side[bi].y-20)}
+ g.beginPath();g.arc(bx*W,by*H,8,0,7);g.fillStyle='#fff';g.fill();g.strokeStyle='#000';g.lineWidth=2;g.stroke();g.setTransform(1,0,0,1,0,0);
+ const f=PV.fl;if(f&&f.t&&t<f.u){g.globalAlpha=Math.min(1,(f.u-t)/500);g.fillStyle=f.c;g.font='900 '+Math.round(H*.15)+'px system-ui';g.textAlign='center';g.fillText(f.t,W/2,H*.5);g.globalAlpha=1}
+ if(PV.rp&&t<PV.rp){g.fillStyle='#fff';g.font='bold 20px system-ui';g.textAlign='left';g.fillText('🎬 REPLAY',16,34)}}
+
+/* ----- Xuất thân và tính cách ----- */
+function bgSel(){const R=UI.role||'P',o=O=>Object.keys(O).map(k=>`<option value="${k}">${O[k][0]}: ${O[k][1]}</option>`).join('');return`<div class="mu">Xuất thân và tính cách</div><select id="nb">${o(BGS[R])}</select><select id="nz">${o(TRS[R])}</select>`}
+const _mn=menu;menu=function(){return _mn().replace('<input id="nn"',bgSel()+'<input id="nn"')};
+function applyBG(bk,tk){if(MD()==='P'){if(bk==='poor'){S.st.sta=cl(S.st.sta+5);S.money=500}else if(bk==='rich')S.money=8000;else if(bk==='acad'){S.cT=65;S.teams[S.team].sq.forEach(p=>{if(!p.me)p.close=cl(p.close+10)})}else if(bk==='street'){S.st.drb=cl(S.st.drb+6);S.st.def=cl(S.st.def-4)}
+ if(tk==='hot')S.st.sht=cl(S.st.sht+4);else if(tk==='calm'){S.st.pas=cl(S.st.pas+4);S.morale=70}else if(tk==='lead')S.chem=70;else if(tk==='fun')S.hap=70;syncMe()}
+ else{const c=S.coach;if(bk==='star'){S.fame=40;c.rep=cl(c.rep+20)}else if(bk==='book')c.tac=cl(c.tac+15);else if(bk==='lock'){c.hr=cl(c.hr+15);S.chem=70}else if(bk==='data')c.vis=cl(c.vis+15);
+  if(tk==='iron')c.trn=cl(c.trn+8);else if(tk==='ear')c.hr=cl(c.hr+8);else if(tk==='gam')c.tac=cl(c.tac+8);else if(tk==='cool')c.rep=cl(c.rep+8)}
+ S.bg=bk;S.trt=tk}
+const _ng2=newGame;newGame=function(i,n,p,t){const bk=($('#nb')||{}).value,tk=($('#nz')||{}).value;_ng2(i,n,p,t);if(!S)return;applyBG(bk,tk);ex();save();render()};
+
+/* ----- Trạng thái mới: hạng đấu, cúp, đội tuyển, ban lãnh đạo, trợ lý, học viện ----- */
+function setObj(){const o=S.teams.map((t,i)=>[i,tStr(i)]).sort((a,b)=>b[1]-a[1]);S.obj=cl(o.findIndex(x=>x[0]===S.team)+1,1,8)}
+function cupsInit(){S.cups=[{id:'dom',n:'Cúp Quốc gia',w:[5,11,17],rn:['Tứ kết','Bán kết','Chung kết'],r:0,alive:true}];if(S.euro)S.cups.push({id:'eu',n:'Cúp châu Âu',w:[4,10,16],rn:['Vòng bảng','Bán kết','Chung kết'],r:0,alive:true})}
+function ex(){if(!S||S.xv===5)return;S.xv=5;S.div=S.div||1;S.bd=S.bd==null?60:S.bd;S.as=S.as||{};S.acad=S.acad||0;S.nt=S.nt||{caps:0,goals:0,titles:0};if(!S.cups)cupsInit();if(!S.obj)setObj()}
+const _rd2=render;render=function(){ex();if(S)SFX.on=S.snd!==false;_rd2()};
+function newTeam(n,dv){const base=dv===1?50+r(0,14):38+r(0,10);return{n,base,sq:mkSquad(base)}}
+function hireAs(k){if(S.budget<1500||S.as[k])return;S.budget-=1500;S.as[k]=1;save();render()}
+function upAcad(){const c=2000*(S.acad+1);if(S.acad>=3||S.budget<c)return;S.budget-=c;S.acad++;save();render()}
+const _tf=tacFx;tacFx=function(o){const f=_tf(o);if(S.as&&S.as.tac){f.a+=1;f.d+=1}return f};
+function clubCard(){ex();const A=S.as,B=(k,t,d)=>`<div class="row" style="padding:5px 0"><span>${t}<br><small class="mu">${d}</small></span>${A[k]?'<span class="chip up">Đã thuê</span>':`<button ${S.budget<1500?'disabled':''} onclick="hireAs('${k}')">1500</button>`}</div>`;
+ return`<div class="card"><h3>🎯 Ban lãnh đạo</h3><p>Mục tiêu mùa này: top <b>${S.obj}</b></p>Niềm tin ${Math.round(S.bd)}%${bar(S.bd,S.bd<30?'var(--r)':'var(--g)')}<p class="mu">Không đạt mục tiêu sẽ mất niềm tin. Về 0 là bị sa thải.</p></div><div class="card"><h3>🧑‍💼 Trợ lý</h3>${B('tac','Trợ lý chiến thuật','+1 sức mạnh tấn công và phòng ngự')}${B('fit','Trợ lý thể lực','Đội ít mệt hơn khi pressing')}${B('sct','Trưởng ban tuyển trạch','Tự biết lối chơi đối thủ mỗi tuần')}</div><div class="card"><h3>🏫 Học viện trẻ (cấp ${S.acad}/3)</h3><p class="mu">Mỗi cuối mùa sinh ra ${S.acad} cầu thủ trẻ tiềm năng.</p><button ${S.acad>=3||S.budget<2000*(S.acad+1)?'disabled':''} onclick="upAcad()">Nâng cấp (${2000*(S.acad+1)})</button></div>`}
+const _tr2=trView;trView=function(){return S.role==='C'?clubCard()+_tr2():_tr2()};
+function extraCard(){ex();const c=(S.cups||[]).map(x=>`<div class="row" style="padding:4px 0"><span>${x.n}</span><span class="chip ${x.alive?'up':''}">${x.alive?x.rn[x.r]+' (tuần '+x.w[x.r]+')':x.r>=3?'🥇 Vô địch':'Đã bị loại'}</span></div>`).join('');
+ return`<div class="card"><h3>🏅 Giải đấu của bạn</h3><p>Hạng đấu: <b>${S.div===2?'Hạng Nhì':'Hạng Nhất'}</b>${S.euro?' · dự Cúp châu Âu':''}</p>${c}${MD()==='P'?`<p class="mu">Đội tuyển: ${S.nt.caps} lần triệu tập · ${S.nt.goals} bàn · ${S.nt.titles} chức vô địch</p>`:`<p class="mu">Mục tiêu mùa này: top ${S.obj} · Niềm tin ban lãnh đạo ${Math.round(S.bd)}%</p>`}</div>`}
+const _tb=tbView;tbView=function(){return _tb()+extraCard()};
+
+/* ----- Cúp, đội tuyển ----- */
+function cupRound(wk){(S.cups||[]).forEach(c=>{if(!c.alive||c.w[c.r]!==wk)return;let on,os;if(c.id==='eu'){on=pick(EU);os=58+c.r*5+r(0,8)}else{const i=pick(S.teams.map((t,k)=>k).filter(k=>k!==S.team));on=S.teams[i].n;os=tStr(i)+r(-2,3)}
+ const ms=tStr(S.team)+(MD()==='P'?(S.me.ovr-55)/12:0),g=pois(cl(1.45*Math.pow(ms/os,3),.2,4)),h=pois(cl(1.1*Math.pow(os/ms,3),.2,4));let win=g>h,pen='';if(g===h){win=Math.random()<.5+((S.cT==null?50:S.cT)-50)/400;pen=' (luân lưu)'}
+ let sc=0;if(MD()==='P'&&g>0&&Math.random()<Math.min(.6,g*({FW:.35,MF:.15,DF:.05}[S.pos]||.1))){sc=1;S.goals++;S.sg++}
+ const rn=c.rn[c.r];S.notice.push(`🏆 ${c.n} (${rn}): ${S.teams[S.team].n} ${g}-${h} ${on}${pen}${sc?' · bạn ghi bàn!':''}`);
+ if(win){c.r++;if(c.r>=3){c.alive=false;S.ti.cup=(S.ti.cup||0)+1;S.fame=cl(S.fame+6);S.money+=2000;S.budget+=2000;S.hl.push('vô địch '+c.n);S.notice.push('🥇 '+S.teams[S.team].n+' VÔ ĐỊCH '+c.n+'!')}}else{c.alive=false;S.hl.push('bị loại ở '+rn+' '+c.n+' trước '+on)}})}
+function tourney(n){const T=[['SEA Games',48,62],['Asian Cup',54,70],['World Cup',62,82]][Math.floor(n/2)%3],P=MD()==='P',ns=P?48+(S.me.ovr-45)*.55+S.fame/12:52+(S.coach.tac+S.coach.hr)/9,rn=['Vòng bảng','Tứ kết','Bán kết','Chung kết'];let st=0,goals=0;
+ for(;st<4;st++){const op=T[1]+(T[2]-T[1])*st/3+r(-3,3);if(Math.random()>1/(1+Math.exp(-(ns-op)/6)))break;if(P)goals+=Math.random()<({FW:.7,MF:.3,DF:.1}[S.pos]||.1)?1:0}
+ return{n:T[0],st,goals,champ:st===4,txt:st===4?'VÔ ĐỊCH':'dừng bước ở '+rn[st]}}
+
+/* ----- Hết mùa: mục tiêu, đội tuyển, thăng/xuống hạng, học viện ----- */
+const _se3=seasonEnd;seasonEnd=function(){ex();const o=ranking(),rank=o.findIndex(x=>x[0]===S.team)+1,done=S.season,P=MD()==='P',obj=S.obj,div=S.div;_se3();if(!S)return;
+ const add=t=>{if(UI.se)UI.se.story.push(t)};
+ if(!P){const ok=rank<=obj;S.bd=cl(S.bd+(ok?20:-25)+(rank===1?10:0));add(ok?`Ban lãnh đạo hài lòng vì bạn đạt mục tiêu top ${obj}.`:`Ban lãnh đạo thất vọng: hạng ${rank}, mục tiêu là top ${obj}.`);if(S.bd<=0&&!S.sacked){S.sacked=true;UI.end=true;UI.se=null}}
+ if(done%2===0){const el=P?(S.fame>=35&&S.me.ovr>=58&&!S.ret):(S.coach.rep>=55);if(el){const t=tourney(done);if(P){S.nt.caps++;S.nt.goals+=t.goals;if(t.champ)S.nt.titles++;S.fame=cl(S.fame+t.st*2+(t.champ?8:0));S.money+=t.st*500}else{S.coach.rep=cl(S.coach.rep+t.st*1.5)}add(`🌍 ${t.n}: ${P?'bạn khoác áo đội tuyển, ':'bạn dẫn dắt đội tuyển, '}${t.txt}${P&&t.goals?` (${t.goals} bàn)`:''}.`)}else if(P)add('Bạn chưa được gọi lên đội tuyển quốc gia mùa này.')}
+ if(!S.real){const rep=(i,dv)=>{const u=new Set(S.teams.map(t=>t.n)),pool=(dv===1?CFG.teams:DIV2).filter(x=>!u.has(x));S.teams[i]=newTeam(pool[0]||('CLB '+r(10,99)),dv)};
+  if(div===1){const bot=[o[8][0],o[9][0]];if(bot.includes(S.team)){const oth=bot.find(x=>x!==S.team);S.div=2;S.teams.forEach((t,i)=>{if(i!==S.team&&i!==oth)rep(i,2)});add('📉 '+S.teams[S.team].n+' xuống hạng, mùa tới đá giải Hạng Nhì.');S.fame=cl(S.fame-3);S.tm=cl(S.tm-10)}else{bot.forEach(i=>rep(i,2));add('Hai đội cuối bảng xuống hạng, hai đội mới lên thay.')}}
+  else{const top=[o[0][0],o[1][0]];if(top.includes(S.team)){const oth=top.find(x=>x!==S.team);S.div=1;S.teams.forEach((t,i)=>{if(i!==S.team&&i!==oth)rep(i,1)});add('📈 '+S.teams[S.team].n+' thăng hạng lên giải cao nhất!');S.fame=cl(S.fame+4);S.flags.promo=(S.flags.promo||0)+1}else top.forEach(i=>rep(i,1))}}
+ if(!P&&S.acad>0){const sq=S.teams[S.team].sq;for(let k=0;k<S.acad&&sq.length<22;k++){const y=mkP(36+S.acad*4,1);y.age=r(16,18);y.pot=cl(65+S.acad*8+r(0,10),0,95);sq.push(y)}add(`🏫 Học viện đưa ${S.acad} cầu thủ trẻ lên đội một.`)}
+ S.euro=S.div===1&&rank<=2&&!S.real;if(S.euro)add('🇪🇺 Mùa tới bạn được dự Cúp châu Âu.');
+ cupsInit();setObj();S.scT=null;chk();save();render()};
+const _endv=endView;endView=function(){return(S.sacked?'<div class="card"><h3>🚪 Bạn đã bị sa thải</h3><p class="mu">Ban lãnh đạo mất niềm tin sau những mùa không đạt mục tiêu.</p></div>':'')+_endv()};
+
+/* ----- Derby ----- */
+const _ms=mS;mS=function(){const x=_ms();if(UI.m&&UI.m.opp===(S.team^1)){x.ma+=1.5;x.oa+=1.5}return x};
+const _st=stepM;stepM=function(){const m=UI.m;if(m&&!m.dl&&m.opp===(S.team^1)){m.dl=1;m.log.push('🔥 DERBY với '+S.teams[m.opp].n+'! Khán đài nóng rực.');SFX.amb(.2)}_st()};
+const _em3=endM;endM=function(){const m=UI.m;if(!m||m.done)return;_em3();if(m.opp===(S.team^1)){const w=m.res==='W',l=m.res==='L';S.tm=cl(S.tm+(w?8:l?-8:0));S.fame=cl(S.fame+(w?2:l?-1:0));if(S.role==='C')S.bd=cl(S.bd+(w?6:l?-8:0));
+ if(w){S.flags.derbyW=(S.flags.derbyW||0)+1;S.hl.push('thắng derby trước '+S.teams[m.opp].n)}else if(l)S.hl.push('thua derby trước '+S.teams[m.opp].n);S.news=w?'🔥 Thắng derby! Cả thành phố ăn mừng.':l?'😶 Thua derby, khán đài lặng đi.':'🔥 Derby kết thúc hòa, hai bên đều chưa hài lòng.';chk();save()}};
+const _wv2=wView;wView=function(){const d=nextOpp()===(S.team^1)?`<div class="card" style="border-color:#ff6b6b"><h3>🔥 Derby tuần này!</h3><p class="mu">Đối đầu ${S.teams[nextOpp()].n}: trận đấu nóng hơn, nhiều bàn thắng hơn, thắng hay thua đều ảnh hưởng gấp đôi.</p></div>`:'';return d+_wv2()};
+
+/* ----- Vòng lặp tuần: cúp, trợ lý tuyển trạch ----- */
+const _nw3=nextWeek;nextWeek=function(){ex();const wk=S.week;_nw3();if(!S||UI.end)return;if(S.week===wk+1)cupRound(wk);if(S.as&&S.as.sct)S.scT={w:S.week,lvl:2};save();render()};
+/* ===== 14. THỦ MÔN: chỉ số, chọn pha xử lý, giữ sạch lưới ===== */
+const STD=Object.assign({},ST),STG={spd:'Phản xạ',sht:'Chọn vị trí',pas:'Phát bóng dài',drb:'Chuyền ngắn bằng chân',def:'Bắt bóng & cản phá',sta:'Thể lực'},GKMAP={save:'def',punch:'cov',rush:'def',long:'pas',short:'drb'};
+function stLabels(){const gk=S&&S.pos==='GK'&&S.role==='P';Object.keys(STD).forEach(k=>{ST[k]=gk?STG[k]:STD[k]});ACTS.P.forEach(a=>{const k=a.id.slice(1);if(a.id[0]==='t'&&STD[k]){a.t='Tập '+ST[k].toLowerCase();a.d='+'+ST[k]+' (khó tăng khi đã cao)'}})}
+function meOvr(){const s=S.st,p=S.pos;return Math.round(p==='GK'?(s.def*2.2+s.spd*1.2+s.sht*.4+s.pas*.2)/4:p==='FW'?(s.sht*2+s.spd+s.drb)/4*.9+s.sta*.1:p==='MF'?(s.pas*2+s.drb+s.sta)/4:(s.def*2+s.spd+s.sta)/4)}
+function lineup(ti,withMe){const sq=S.teams[ti].sq.filter(p=>!p.inj&&(!p.me||withMe));let gk=sq.filter(p=>p.pos==='GK').sort((a,b)=>b.ovr-a.ovr)[0];if(withMe&&ti===S.team&&S.pos==='GK'&&S.role==='P'&&S.me&&!S.me.inj)gk=S.me;const rest=sq.filter(p=>p!==gk).sort((a,b)=>b.ovr-a.ovr).slice(0,gk?10:11);return gk?[gk,...rest]:rest}
+function meStarts(){if(S.inj)return false;const sc=S.me.ovr+(S.form-50)/10+((S.cT==null?50:S.cT)-50)/8;if(S.pos==='GK'){const g=S.teams[S.team].sq.filter(p=>!p.me&&!p.inj&&p.pos==='GK').sort((a,b)=>b.ovr-a.ovr)[0];return sc>=(g?g.ovr:0)-1}
+ const o=S.teams[S.team].sq.filter(p=>!p.me&&!p.inj).sort((a,b)=>b.ovr-a.ovr);return sc>=(o[10]?o[10].ovr:0)-1}
+const autoCh=w=>w.atk?(S.pos==='GK'?'long':S.pos==='FW'?'sht':S.pos==='MF'?'pas':'drb'):(S.pos==='GK'?'save':'def');
+function qk(){UI.quick=true;const m=UI.m,w=m.wait;if(w&&w!=='ht'){m.wait=null;resM(w,autoCh(w))}else stepM()}
+function moment(){const m=UI.m,mn=m.mins[m.i],x=mS(),atk=Math.random()<x.ma/(x.ma+x.oa),att=atk?x.ma:x.oa,def=atk?x.od:x.md,pg=cl(.27*Math.pow(att/def,2.2),.05,.6),w={mn,atk,pg,def,x};
+ if(m.i===3&&S.role==='C'&&!(S.scT&&S.scT.w===S.week)){S.scT={w:S.week,lvl:1};m.log.push('🔎 Sau '+mn+' phút, bạn nhận ra đối thủ đá kiểu '+TS_ST[oppTac(m.opp).st]+'.')}
+ const inv=(m.starts||m.on)&&S.role==='P'&&!S.inj,pr=(atk?{FW:.6,MF:.5,DF:.25,GK:.12}:{DF:.6,MF:.4,FW:.15,GK:.75})[S.pos]*(1+relBoost()/8);
+ if(inv&&Math.random()<pr){if(UI.quick)return resM(w,autoCh(w));m.wait=w;return render()}
+ anim(atk);setTimeout(()=>resM(w,null),UI.quick?0:1100)}
+const _rs4=resM;resM=function(w,ch){if(S.pos!=='GK'||!GKMAP[ch])return _rs4(w,ch);
+ const m=UI.m,p0=m.perf,g0=m.g,c0=m.sc[1],h0=m.sc[0],d0=S.st.def,isD=ch==='save'||ch==='punch'||ch==='rush';
+ if(isD)S.st.def=cl(d0+(S.st.sht-50)/6+(ch==='rush'?12:0));if(ch==='rush')w.pg=.5;
+ try{_rs4(w,GKMAP[ch])}finally{S.st.def=d0}
+ const ok=m.perf>p0,oppG=m.sc[1]>c0,myG=m.sc[0]>h0;if(m.g>g0){m.a+=m.g-g0;m.g=g0}if(isD&&ok&&S.gk)S.gk.saves++;
+ const T={save:ok?'🧤 Bạn bắt chắc cú sút, bóng nằm gọn trong tay.':oppG?'😬 Bóng lọt qua tay bạn, đối thủ ghi bàn.':'😮 Bạn chậm nhịp nhưng cú sút đi chệch.',
+  punch:ok?'🥊 Phản xạ xuất sắc, bạn đấm bóng ra ngoài!':oppG?'😬 Bạn chạm bóng nhưng không đủ lực, bóng vẫn vào lưới.':'😮 Bạn bay người, may mắn bóng đi chệch.',
+  rush:ok?'🏃 Bạn lao ra đúng lúc, triệt hạ cơ hội!':oppG?'😱 Bạn lao ra quá chậm, bóng lăn vào khung thành trống.':'😮 Bạn lao ra hụt, nhưng đối thủ sút hỏng.',
+  long:ok?(myG?'🚀 Quả phát bóng dài của bạn mở ra bàn thắng cho đội!':'🚀 Quả phát bóng dài tạo ra cơ hội nguy hiểm.'):'❌ Quả phát bóng bị đối thủ cắt, mất bóng.',
+  short:ok?(myG?'🧤 Đường chuyền ngắn của bạn khởi đầu pha ghi bàn đẹp!':'🧤 Bạn chuyền ngắn an toàn, đội giữ được bóng.'):'❌ Bạn chuyền hỏng, may mà đối thủ không tận dụng được.'};
+ m.log[m.log.length-1]=w.mn+"' "+T[ch];render()};
+const _mv=mView;mView=function(){let h=_mv();const m=UI.m;if(S.pos==='GK'&&S.role==='P'&&m&&m.wait&&m.wait!=='ht'){const a=m.wait.atk;h=h.replace(/<div class="card modal">[\s\S]*?<\/div>/,`<div class="card modal"><h3>${m.wait.mn}' ${a?'Bóng trong tay bạn, cả đội chờ lệnh!':'Cú sút đang bay về phía bạn!'}</h3>${a?`<button onclick="ch('long')">🚀 Phát bóng dài</button><button onclick="ch('short')">🧤 Chuyền ngắn an toàn</button>`:`<button onclick="ch('save')">🧤 Bắt bóng chắc chắn</button><button onclick="ch('punch')">🥊 Đấm bóng ra (dựa vào phản xạ)</button><button onclick="ch('rush')">🏃 Lao ra cản góc (rủi ro cao)</button>`}</div>`)}return h};
+const _em4=endM;endM=function(){const m=UI.m;if(!m||m.done)return;const gk=S.pos==='GK'&&S.role==='P'&&(m.starts||m.on),clean=gk&&m.sc[1]===0;if(gk){if(clean){m.perf+=1.5;if(S.gk)S.gk.cs++}else if(m.sc[1]>=3)m.perf-=1.2}_em4();if(clean)S.news='🧤 '+S.name+' giữ sạch lưới, đội nhà không để thủng lưới trận này.';chk();save()};
+const _cr=cupRound;cupRound=function(wk){const g0=S.goals,s0=S.sg;_cr(wk);if(S.pos==='GK'&&S.role==='P'){S.goals=g0;S.sg=s0;S.notice=S.notice.map(x=>x.replace(' · bạn ghi bàn!',''))}};
+const _tn=tourney;tourney=function(n){const t=_tn(n);if(S.pos==='GK')t.goals=0;return t};
+const _cv2=cView;cView=function(){return(S.pos==='GK'&&S.role==='P'&&S.gk?`<div class="card"><h3>🧤 Thủ môn</h3><div class="grid"><div>Giữ sạch lưới<br><b>${S.gk.cs}</b></div><div>Pha cứu thua<br><b>${S.gk.saves}</b></div></div></div>`:'')+_cv2()};
+const _rd3=render;render=function(){stLabels();if(S&&S.pos==='GK'&&!S.gk)S.gk={cs:0,saves:0};_rd3()};
+const _mn2=menu;menu=function(){return _mn2().replace('<option value="DF">Hậu vệ</option>','<option value="DF">Hậu vệ</option><option value="GK">Thủ môn</option>')};
+const _ng3=newGame;newGame=function(i,n,p,t){_ng3(i,n,p,t);if(S&&p==='GK'&&S.role==='P'&&!S.gkInit){S.gkInit=1;S.st.def=cl(S.st.def+8);S.st.spd=cl(S.st.spd+4);S.st.sht=cl(S.st.sht-4);S.st.drb=cl(S.st.drb-2);S.gk={cs:0,saves:0};syncMe();save();render()}};
+CFG.ach.push({id:'cs5',t:'Giữ sạch lưới 5 trận',f:()=>S.gk&&S.gk.cs>=5},{id:'sv50',t:'Người hùng khung gỗ (50 pha cứu thua)',f:()=>S.gk&&S.gk.saves>=50});
+CFG.ev.push(
+Ek(()=>MD()==='P'&&S.pos==='GK',E('P','Huấn luyện viên thủ môn đề nghị tập riêng','Thầy muốn kèm riêng bạn những pha đối mặt một chọi một.',['Tập thêm',{st:{def:1,spd:1},energy:-10},'Bạn bay người cả buổi chiều.'],['Nghỉ ngơi',{energy:6},'Cơ thể cần hồi phục.'])),
+Ek(()=>MD()==='P'&&S.pos==='GK',E('P','Fan chê sai lầm của thủ môn','Một pha hụt bóng của bạn được cắt thành clip lan truyền.',['Nhận lỗi công khai',{fame:1,chem:3},'Đồng đội trân trọng thái độ của bạn.'],['Im lặng tập tiếp',{form:2,fame:-1},'Bạn để đôi găng lên tiếng.']))
+);
 render();
 </script></body></html>
