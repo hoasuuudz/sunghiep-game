@@ -141,42 +141,42 @@ async function api(path,ttl){
  const k='sn_c_'+path;let c=null;try{c=JSON.parse(localStorage.getItem(k))}catch(e){}
  if(c&&Date.now()-c.at<ttl*1000)return{...c,src:'live'};
  if(RT.remaining!==null&&RT.remaining<10)return c?{...c,src:'cache'}:null;
- try{const r=await fetch(path);if(!r.ok)throw 0;const j=await r.json();if(!j||!j.data)throw 0;if(j.remaining!=null)RT.remaining=j.remaining;
+ try{RT.err='';const r=await fetch(path),j=await r.json().catch(()=>null);if(!r.ok||!j||!j.data){RT.err=errText(j,r);throw 0}if(j.remaining!=null)RT.remaining=j.remaining;
   c={data:j.data,at:j.at||Date.now()};try{localStorage.setItem(k,JSON.stringify(c))}catch(e){}return{...c,src:'live'}}
- catch(e){return c?{...c,src:'cache'}:null}}
+ catch(e){if(!RT.err)RT.err='không kết nối được máy chủ API';return c?{...c,src:'cache'}:null}}
 async function ensureSquad(ti){const t=S.teams[ti];if(!S.real||t.real||!t.id)return;
  const o=await api('/api/squad?team='+t.id,604800),L=o&&o.data&&o.data[0]&&o.data[0].players;
  if(!L||L.length<14){t.real=-1;return} // thiếu dữ liệu đội hình: giữ cầu thủ hư cấu
  const PM={Goalkeeper:'GK',Defender:'DF',Midfielder:'MF',Attacker:'FW'},keep=t.sq.filter(p=>p.me);
- t.sq=L.slice(0,22).map(p=>{const ovr=cl((t.base||55)+r(-9,9),35,85),age=p.age||r(19,33);return{n:p.name,pos:PM[p.position]||'MF',age,ovr,pot:cl(ovr+(age<25?r(2,15):0),0,95),tr:pick(CFG.traits),trust:r(40,60),envy:r(0,25),close:r(10,40),mem:[],inj:0}}).concat(keep);t.real=1}
+ t.sq=L.slice(0,22).map(p=>{const ovr=cl((t.base||55)+r(-9,9),35,85),age=p.age||r(19,33);return{n:clean(p.name),pos:PM[p.position]||'MF',age,ovr,pot:cl(ovr+(age<25?r(2,15):0),0,95),tr:pick(CFG.traits),trust:r(40,60),envy:r(0,25),close:r(10,40),mem:[],inj:0}}).concat(keep);t.real=1}
 async function syncReal(){if(!S||!S.real)return;const o=await api('/api/fixtures?league='+S.real.lg,21600);if(!o||!o.data)return;const mine=S.real.ids[S.team];
  const done=o.data.filter(f=>FIN.includes(f.fixture.status.short)&&(f.teams.home.id===mine||f.teams.away.id===mine)&&!S.real.seen.includes(f.fixture.id)).sort((a,b)=>a.fixture.timestamp-b.fixture.timestamp);
  if(!done.length)return;
  done.slice(-2).forEach(f=>{const h=f.teams.home.id===mine,gf=h?f.goals.home:f.goals.away,ga=h?f.goals.away:f.goals.home,d=gf>ga?4:gf<ga?-4:0;S.tm=cl(S.tm+d);
-  S.notice.push(`🌍 Thực tế: ${f.teams.home.name} ${f.goals.home}-${f.goals.away} ${f.teams.away.name}${d?(d>0?' · đội phấn chấn (+4)':' · đội chùng xuống (-4)'):''}`)});
+  S.notice.push(`🌍 Thực tế: ${esc(f.teams.home.name)} ${f.goals.home}-${f.goals.away} ${esc(f.teams.away.name)}${d?(d>0?' · đội phấn chấn (+4)':' · đội chùng xuống (-4)'):''}`)});
  done.forEach(f=>S.real.seen.push(f.fixture.id));if(S.real.seen.length>60)S.real.seen=S.real.seen.slice(-40);save();render()}
 async function loadReal(id){if(!S||!S.real)return;id=id||UI.rv||S.real.lg;
  const[a,b]=await Promise.all([api('/api/standings?league='+id,1800),api('/api/fixtures?league='+id,21600)]);
  let live=null;if(b&&b.data&&b.data.some(maybeLive))live=await api('/api/fixtures?league='+id+'&live=1',60);
  const fx=live&&live.data?live.data.concat((b?b.data:[]).filter(f=>!live.data.some(l=>l.fixture.id===f.fixture.id))):(b&&b.data);
  const st=a&&a.data&&a.data[0]&&a.data[0].league?[].concat(...a.data[0].league.standings):null,any=[a,b,live].filter(Boolean);
- RT.d[id]={st,fx,at:any.length?Math.max(...any.map(x=>x.at)):0,state:!any.length?'off':any.some(x=>x.src==='live')?'live':'cache'};render()}
+ RT.d[id]={st,fx,at:any.length?Math.max(...any.map(x=>x.at)):0,state:!any.length?'off':(live&&live.data&&live.data.some(f=>LIVE.includes(f.fixture.status.short)))?'live':any.some(x=>x.src==='live')?'fresh':'cache'};render()}
 setInterval(()=>{if(!S||!S.real||UI.tab!=='table'||document.hidden)return;const id=UI.rv||S.real.lg,d=RT.d[id];if(d&&d.fx&&d.fx.some(maybeLive))loadReal(id)},60000);
-async function goNew(i){const nm=$('#nn').value.trim()||'Tân binh',pos=$('#np').value;UI.nn=nm;
+async function goNew(i){const nm=clean($('#nn').value)||'Tân binh',pos=$('#np').value;UI.nn=nm;
  if(UI.mode!=='real')return newGame(i,nm,pos,+$('#nt').value);
  if(!UI.rl){const lg=+$('#nl').value;UI.lg=lg;UI.err='⏳ Đang tải giải đấu…';render();
   const o=await api('/api/standings?league='+lg,1800),st=o&&o.data&&o.data[0]&&o.data[0].league?[].concat(...o.data[0].league.standings):null;
-  if(!st||st.length<10){UI.err='Không tải được dữ liệu giải (API chưa deploy, hết quota hoặc đang offline). Hãy chọn Thế giới ảo hoặc thử lại sau.';return render()}
-  UI.err='';UI.rl={lg:CFG.leagues.find(l=>l.id===lg),teams:st.map(x=>({id:x.team.id,name:CFG.alias[x.team.name]||x.team.name,rank:x.rank}))};return render()}
+  if(!st||st.length<10){UI.err='Không tải được dữ liệu giải: '+(RT.err||'không rõ lý do')+'. Hãy chọn Thế giới ảo hoặc thử lại sau.';return render()}
+  UI.err='';UI.rl={lg:CFG.leagues.find(l=>l.id===lg),teams:st.map(x=>({id:x.team.id,name:clean(CFG.alias[x.team.name]||x.team.name),rank:x.rank}))};return render()}
  const all=UI.rl.teams,k=+$('#nt').value,n=all.length,a=cl(k-4,0,n-10);
  UI.rt={lg:UI.rl.lg,teams:all.slice(a,a+10).map(t=>({...t,base:Math.round(66-(t.rank-1)/(n-1)*20)}))};UI.rl=null;UI.mode='sim';newGame(i,nm,pos,k-a)}
 function realView(){if(!S.real)return'';const id=UI.rv||S.real.lg,d=RT.d[id],mine=S.real.ids[S.team],nm=x=>(CFG.leagues.find(l=>l.id===x)||{}).n,
- lb={live:'🔴 Đang trực tiếp',cache:'🟡 Dữ liệu cache',off:'⚪ Offline'}[d?d.state:'off'],hm=d&&d.at?new Date(d.at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):'';
+ lb={live:'🔴 Đang trực tiếp',fresh:'🟢 Dữ liệu mới',cache:'🟡 Dữ liệu cache',off:'⚪ Offline'}[d?d.state:'off'],hm=d&&d.at?new Date(d.at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):'';
  let h=`<div class="card"><div class="row"><h3>Thế giới thật</h3><span class="chip">${lb}${d&&d.state!=='live'&&hm?' · Dữ liệu lúc '+hm:''}</span></div><div class="grid">${[...new Set([S.real.lg,2])].map(x=>`<button class="${id===x?'sel':''}" onclick="UI.rv=${x};loadReal(${x})">${nm(x)}</button>`).join('')}</div>`;
- if(!d||(!d.st&&!d.fx))return h+'<p class="mu">Chưa có dữ liệu thật. Game vẫn chạy bình thường bằng dữ liệu mô phỏng.</p></div>';
+ if(!d||(!d.st&&!d.fx))return h+'<p class="mu">Chưa có dữ liệu thật'+(RT.err?' ('+RT.err+')':'')+'. Game vẫn chạy bình thường bằng dữ liệu mô phỏng.</p></div>';
  const F=(d.fx||[]).slice().sort((a,b)=>a.fixture.timestamp-b.fixture.timestamp),done=F.filter(f=>FIN.includes(f.fixture.status.short)).slice(-4),next=F.filter(f=>!FIN.includes(f.fixture.status.short)).slice(0,5),
- ln=f=>`<div class="${f.teams.home.id===mine||f.teams.away.id===mine?'':'mu'}">${f.teams.home.name} ${f.goals.home??'-'} - ${f.goals.away??'-'} ${f.teams.away.name} <small>${LIVE.includes(f.fixture.status.short)?'🔴 '+(f.fixture.status.elapsed||'')+"'":new Date(f.fixture.timestamp*1000).toLocaleDateString('vi-VN')}</small></div>`;
- if(d.st)h+=`<table><tr><th>#</th><th>Đội</th><th>Tr</th><th>HS</th><th>Đ</th></tr>${d.st.slice(0,20).map(x=>`<tr class="${x.team.id===mine?'me':''}"><td>${x.rank}</td><td>${x.team.name}</td><td>${x.all.played}</td><td>${x.goalsDiff}</td><td><b>${x.points}</b></td></tr>`).join('')}</table>`;
+ ln=f=>`<div class="${f.teams.home.id===mine||f.teams.away.id===mine?'':'mu'}">${esc(f.teams.home.name)} ${f.goals.home??'-'} - ${f.goals.away??'-'} ${esc(f.teams.away.name)} <small>${LIVE.includes(f.fixture.status.short)?'🔴 '+(f.fixture.status.elapsed||'')+"'":new Date(f.fixture.timestamp*1000).toLocaleDateString('vi-VN')}</small></div>`;
+ if(d.st)h+=`<table><tr><th>#</th><th>Đội</th><th>Tr</th><th>HS</th><th>Đ</th></tr>${d.st.slice(0,20).map(x=>`<tr class="${x.team.id===mine?'me':''}"><td>${x.rank}</td><td>${esc(x.team.name)}</td><td>${x.all.played}</td><td>${x.goalsDiff}</td><td><b>${x.points}</b></td></tr>`).join('')}</table>`;
  if(F.length)h+=`<h3 style="margin-top:12px">Kết quả và lịch thật</h3>${done.map(ln).join('')}${next.map(ln).join('')}`;
  return h+'</div>'}
 
@@ -184,7 +184,7 @@ function realView(){if(!S.real)return'';const id=UI.rv||S.real.lg,d=RT.d[id],min
 const $=s=>document.querySelector(s),r=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,pick=a=>a[r(0,a.length-1)],cl=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
 let S=null,UI={tab:'week',sel:[],m:null,modal:null,slot:0,nw:0,se:null,end:null,t:null,quick:false};
 const KEY=i=>'sn_slot'+i;
-function save(){if(!S)return;try{localStorage.setItem(KEY(UI.slot),JSON.stringify(S))}catch(e){}}
+function save(){if(!S)return;try{if(S.log&&S.log.length>50)S.log.length=50;S.teams.forEach(t=>t.sq.forEach(p=>{if(p.mem&&p.mem.length>5)p.mem=p.mem.slice(-5)}));localStorage.setItem(KEY(UI.slot),JSON.stringify(S));UI.saveErr=0}catch(e){if(!UI.saveErr){UI.saveErr=1;if(S.notice)S.notice.push('⚠️ Không lưu được game (bộ nhớ trình duyệt đầy hoặc bị chặn).')}}}
 function load(i){try{return JSON.parse(localStorage.getItem(KEY(i)))}catch(e){return null}}
 function del(i){try{localStorage.removeItem(KEY(i))}catch(e){}render()}
 const bar=(v,c='var(--b)')=>`<div class="bar"><i style="width:${cl(Math.round(v))}%;background:${c}"></i></div>`;
@@ -265,7 +265,7 @@ function stepM(){const m=UI.m;if(!m||m.done)return;clearTimeout(UI.t);if(m.wait=
  const inv=(m.starts||m.on)&&S.role==='P'&&!S.inj,pr=(atk?{FW:.6,MF:.5,DF:.25}:{DF:.6,MF:.4,FW:.15})[S.pos];
  if(inv&&Math.random()<pr){if(!UI.quick){m.wait=w;return render()}return resM(w,atk?(S.pos==='FW'?'sht':S.pos==='MF'?'pas':'drb'):'def')}
  resM(w,null)}
-function resM(w,ch){const m=UI.m,T=S.teams[S.team].n,O=S.teams[m.opp].n,lk=Math.min(.08,S.luck*.01);let t='',goal=0,mine=w.atk;
+function resM(w,ch){const m=UI.m,T=S.teams[S.team].n,O=S.teams[m.opp].n,lk=cl(Math.min(.08,S.luck*.01)+(S.rbT||0)*.01,-.06,.1);let t='',goal=0,mine=w.atk;
  const p=(s,k=1)=>cl(((s/110)+((S.energy-50)+(S.morale-50)+(S.form-50))/700-(w.def-50)/300+lk)*k,.08,.9),res=ok=>{if(ok)S.luck=Math.max(0,S.luck-1);else S.luck=Math.min(8,S.luck+1)};
  if(!ch){goal=Math.random()<w.pg;const who=pick((mine?w.x.L:w.x.OL).filter(q=>q.pos!=='GK'&&!q.me)||[{n:'Cầu thủ'}]).n;
   t=mine?(goal?`⚽ ${T}: ${who} dứt điểm — VÀO!`:pick(['Pha tấn công của '+T+' bị thủ môn cản phá.','Cú sút của '+who+' đi vọt xà.','Hàng thủ '+O+' dọn bóng kịp thời.'])):(goal?`⚽ ${O}: ${who} đưa bóng vào lưới!`:pick([O+' áp sát nhưng hàng thủ vững vàng.','Thủ môn '+T+' xuất sắc cứu thua.','Cú sút của '+who+' trúng cột dọc.']))}
@@ -345,7 +345,7 @@ function render(){const A=$('#app');if(UI.end&&S)return A.innerHTML=endView();if
  A.innerHTML=head()+'<main>'+(UI.se?seView():(UI.modal?modal():'')+view())+'</main>'+(UI.se?'':'<nav>'+TABS.map(t=>`<button class="${UI.tab===t[0]?'on':''}" onclick="tab('${t[0]}')">${t[1]}</button>`).join('')+'</nav>')}
 function head(){const lock=S.ret||(UI.m&&!UI.m.done);return`<header><div><b>Mùa ${S.season} · Tuần ${Math.min(S.week,18)}/18</b><small>${S.name} · ${S.age} tuổi · ${S.teams[S.team].n}</small></div><div>💰 ${Math.round(S.money).toLocaleString('vi-VN')}</div><button class="role" ${lock?'disabled':''} onclick="sw()">${S.ret?'📋 HLV':S.role==='P'?'⚽ → 📋 Làm HLV':'📋 → ⚽ Làm cầu thủ'}</button></header>`}
 function menu(){let h='<h2 style="margin-top:20px">⚽ Sự nghiệp: Cầu thủ &amp; HLV</h2><p class="mu">Chơi cầu thủ, rồi chuyển sang HLV bất cứ lúc nào. Mỗi quyết định để lại hậu quả ở vai kia.</p>';
- for(let i=1;i<=3;i++){const g=load(i);h+=`<div class="card"><b>Slot ${i}</b>`+(g?`<p class="mu">${g.name} · Mùa ${g.season} · ${g.age} tuổi · ${g.role==='P'?'Cầu thủ':'HLV'} · ${g.teams[g.team].n}</p><div class="grid"><button class="pri" onclick="loadGame(${i})">Tiếp tục</button><button onclick="if(confirm('Xóa save này?'))del(${i})">Xóa</button></div>`:(UI.nw===i?`<input id="nn" placeholder="Tên nhân vật" maxlength="24" value="${UI.nn||''}"><select id="np"><option value="FW">Tiền đạo</option><option value="MF">Tiền vệ</option><option value="DF">Hậu vệ</option></select>${UI.mode==='real'&&!UI.rl?'':`<select id="nt">${(UI.rl?UI.rl.teams.map(t=>t.name+' (hạng '+t.rank+')'):CFG.teams).map((t,k)=>`<option value="${k}">${t}</option>`).join('')}</select>`}<select id="nm" onchange="UI.nn=$('#nn').value;UI.mode=this.value;UI.rl=null;UI.err='';render()"><option value="sim"${UI.mode==='real'?'':' selected'}>Thế giới ảo (offline)</option><option value="real"${UI.mode==='real'?' selected':''}>Thế giới thật (cần deploy Vercel)</option></select>${UI.mode==='real'?`<select id="nl">${CFG.leagues.map(l=>`<option value="${l.id}"${UI.lg===l.id?' selected':''}>${l.n}</option>`).join('')}</select>`:''}${UI.err?`<p style="color:var(--r)">${UI.err}</p>`:''}<button class="pri" style="width:100%" onclick="goNew(${i})">${UI.mode==='real'&&!UI.rl?'Tải danh sách đội':'Bắt đầu sự nghiệp'}</button>`:`<p class="mu">Slot trống</p><button class="ok" onclick="UI.nw=${i};render()">Tạo nhân vật mới</button>`))+'</div>'}
+ for(let i=1;i<=3;i++){const g=load(i);h+=`<div class="card"><b>Slot ${i}</b>`+(g?`<p class="mu">${g.name} · Mùa ${g.season} · ${g.age} tuổi · ${g.role==='P'?'Cầu thủ':'HLV'} · ${g.teams[g.team].n}</p><div class="grid"><button class="pri" onclick="loadGame(${i})">Tiếp tục</button><button onclick="if(confirm('Xóa save này?'))del(${i})">Xóa</button></div>`:(UI.nw===i?`<input id="nn" placeholder="Tên nhân vật" maxlength="24" value="${esc(UI.nn||'')}"><select id="np"><option value="FW">Tiền đạo</option><option value="MF">Tiền vệ</option><option value="DF">Hậu vệ</option></select>${UI.mode==='real'&&!UI.rl?'':`<select id="nt">${(UI.rl?UI.rl.teams.map(t=>t.name+' (hạng '+t.rank+')'):CFG.teams).map((t,k)=>`<option value="${k}">${t}</option>`).join('')}</select>`}<select id="nm" onchange="UI.nn=$('#nn').value;UI.mode=this.value;UI.rl=null;UI.err='';render()"><option value="sim"${UI.mode==='real'?'':' selected'}>Thế giới ảo (offline)</option><option value="real"${UI.mode==='real'?' selected':''}>Thế giới thật (cần deploy Vercel)</option></select>${UI.mode==='real'?`<select id="nl">${CFG.leagues.map(l=>`<option value="${l.id}"${UI.lg===l.id?' selected':''}>${l.n}</option>`).join('')}</select>`:''}${UI.err?`<p style="color:var(--r)">${UI.err}</p>`:''}<button class="pri" style="width:100%" onclick="goNew(${i})">${UI.mode==='real'&&!UI.rl?'Tải danh sách đội':'Bắt đầu sự nghiệp'}</button>`:`<p class="mu">Slot trống</p><button class="ok" onclick="UI.nw=${i};render()">Tạo nhân vật mới</button>`))+'</div>'}
  return h}
 function modal(){const e=UI.modal;return`<div class="modal"><h3>${e.t}</h3><p>${e.d}</p>${e.c.map((c,i)=>`<button onclick="evPick(${i})">${c.t}</button>`).join('')}</div>`}
 function view(){if(UI.tab==='match'&&UI.m)return mView();const f={week:wView,char:cView,squad:sqView,table:tbView,tr:trView,rel:relView,ach:achView,set:setView}[UI.tab];return f()}
@@ -374,9 +374,9 @@ function trView(){if(S.role!=='C')return`<div class="card"><h3>Chuyển nhượn
  const sq=S.teams[S.team].sq;return`<div class="card"><h3>Ngân sách: ${Math.round(S.budget).toLocaleString('vi-VN')}</h3><p class="mu">Thị trường hôm nay (scout để làm mới)</p>${S.market.map((p,i)=>`<div class="row" style="padding:6px 0"><span>${p.n}${p.ex?' 🔁 bạn cũ':''}<br><small class="mu">${p.pos} · ${p.age}t · OVR ${p.ovr}/${p.pot}</small></span><button class="ok" ${S.budget<p.price||sq.length>=22?'disabled':''} onclick="buy(${i})">${p.price}</button></div>`).join('')||'<p class="mu">Trống. Hãy đi scout.</p>'}</div><div class="card"><h3>Bán cầu thủ</h3>${[...sq].filter(p=>!p.me).sort((a,b)=>a.ovr-b.ovr).map(p=>`<div class="row" style="padding:6px 0"><span>${p.n}<br><small class="mu">${p.pos} · OVR ${p.ovr} · thân thiết ${p.close}</small></span><button ${sq.length<=18?'disabled':''} onclick="sell('${p.n.replace(/'/g,"\\'")}')">Bán ${Math.round(p.ovr*p.ovr/3)}</button></div>`).join('')}</div>`}
 function relView(){return exView()+`<div class="card"><h3>Quan hệ</h3>${[...S.teams[S.team].sq].filter(p=>!p.me).sort((a,b)=>b.close-a.close).map(p=>`<div style="padding:7px 0"><div class="row"><b>${p.n}</b><small class="mu">${p.tr}</small></div><div class="grid"><small>Tin tưởng${bar(p.trust,'var(--g)')}</small><small>Thân thiết${bar(p.close,'var(--b)')}</small></div>${p.envy>30?`<small style="color:var(--y)">Hơi ghen tị với bạn</small>`:''}${p.mem.length?`<div class="mu"><small>Nhớ: ${p.mem[p.mem.length-1]}</small></div>`:''}</div>`).join('')}</div>`}
 function achView(){return`<div class="card"><h3>Thành tựu (${S.ach.length}/${CFG.ach.length})</h3>${CFG.ach.map(a=>`<div class="row" style="padding:6px 0;${S.ach.includes(a.id)?'':'opacity:.4'}"><span>${S.ach.includes(a.id)?'🏆':'🔒'} ${a.t}</span></div>`).join('')}<p class="mu">Danh hiệu: vô địch cầu thủ ${S.ti.P} · vô địch HLV ${S.ti.C} · Quả bóng vàng ${S.balls}</p></div>`}
-function setView(){return`<div class="card"><h3>Tốc độ mô phỏng</h3><div class="grid">${[[1400,'Chậm'],[900,'Vừa'],[350,'Nhanh']].map(x=>`<button class="${S.sp===x[0]?'sel':''}" onclick="S.sp=${x[0]};save();render()">${x[1]}</button>`).join('')}</div></div><div class="card"><h3>Chế độ thế giới</h3><p class="mu">${S.real?'Thế giới thật: '+S.real.ln+' (đội và BXH thật, trận của bạn vẫn mô phỏng).':'Thế giới ảo (offline hoàn toàn).'}</p>${S.real?'<button style="width:100%" onclick="loadReal()">Làm mới dữ liệu thật</button>':''}</div><div class="card"><button style="width:100%" onclick="S=null;UI.m=null;render()">Về menu chính</button><button style="width:100%;margin-top:8px" onclick="if(confirm('Xóa save này?')){del(UI.slot);S=null;render()}">Xóa save hiện tại</button><button style="width:100%;margin-top:8px" onclick="if(confirm('Kết thúc sự nghiệp?')){UI.end=true;render()}">Kết thúc sự nghiệp, xem tổng kết</button></div>`}
+function setView(){return`<div class="card"><h3>Tốc độ mô phỏng</h3><div class="grid">${[[1400,'Chậm'],[900,'Vừa'],[350,'Nhanh']].map(x=>`<button class="${S.sp===x[0]?'sel':''}" onclick="S.sp=${x[0]};save();render()">${x[1]}</button>`).join('')}</div></div><div class="card"><h3>Chế độ thế giới</h3><p class="mu">${S.real?'Thế giới thật: '+S.real.ln+' (đội và BXH thật, trận của bạn vẫn mô phỏng).':'Thế giới ảo (offline hoàn toàn).'}</p>${S.real?'<button style="width:100%" onclick="loadReal()">Làm mới dữ liệu thật</button>':''}</div><div class="card"><button style="width:100%" onclick="stopM();S=null;render()">Về menu chính</button><button style="width:100%;margin-top:8px" onclick="if(confirm('Xóa save này?')){del(UI.slot);S=null;render()}">Xóa save hiện tại</button><button style="width:100%;margin-top:8px" onclick="if(confirm('Kết thúc sự nghiệp?')){UI.end=true;render()}">Kết thúc sự nghiệp, xem tổng kết</button></div>`}
 function seView(){const s=UI.se;return`<div class="card"><h2>Câu chuyện mùa giải</h2>${s.story.map(x=>`<p>${x}</p>`).join('')}<div class="grid"><button id="cp" onclick="copyStory()">Copy để chia sẻ</button><button class="pri" onclick="UI.se=null;render()">Sang mùa ${S.season}</button></div></div><div class="card"><h3>Bảng xếp hạng cuối mùa</h3><table>${s.table.map((x,i)=>`<tr class="${x[0]===S.team?'me':''}"><td>${i+1}</td><td>${S.teams[x[0]].n}</td><td><b>${x[1].pt}</b></td></tr>`).join('')}</table></div>`}
-function endView(){return`<h2 style="margin-top:20px">Tổng kết sự nghiệp: ${S.name}</h2><div class="card"><p>${S.season-1} mùa giải · ${S.age} tuổi · OVR cao nhất ${S.me.ovr}</p><p>Bàn thắng ${S.goals} · Kiến tạo ${S.assists} · Danh tiếng ${Math.round(S.fame)}</p><p>Vô địch cầu thủ ${S.ti.P} · vô địch HLV ${S.ti.C} · Quả bóng vàng ${S.balls}</p><p>Thành tựu: ${S.ach.length}/${CFG.ach.length}${S.ti.P&&S.ti.C?'<br>🏆 Người làm được cả hai!':''}</p></div><button class="pri" style="width:100%" onclick="UI.end=null;S=null;render()">Về menu chính</button>`}
+function endView(){return`<h2 style="margin-top:20px">Tổng kết sự nghiệp: ${S.name}</h2><div class="card"><p>${S.season-1} mùa giải · ${S.age} tuổi · OVR cao nhất ${S.me.ovr}</p><p>Bàn thắng ${S.goals} · Kiến tạo ${S.assists} · Danh tiếng ${Math.round(S.fame)}</p><p>Vô địch cầu thủ ${S.ti.P} · vô địch HLV ${S.ti.C} · Quả bóng vàng ${S.balls}</p><p>Thành tựu: ${S.ach.length}/${CFG.ach.length}${S.ti.P&&S.ti.C?'<br>🏆 Người làm được cả hai!':''}</p></div><button class="pri" style="width:100%" onclick="stopM();UI.end=null;S=null;render()">Về menu chính</button>`}
 /* ===== 12. ĐỢT 4: VAI CỐ ĐỊNH, TRẬN ĐẤU HÌNH ẢNH, CHUYỂN NHƯỢNG, QUAN HỆ CÓ TÁC DỤNG, CHIẾN THUẬT HLV ===== */
 (function(){const s=document.createElement('style');s.textContent=`
 body{background:radial-gradient(1100px 600px at 50% -10%,#1d3270 0,#0a1020 62%) fixed}
@@ -413,7 +413,7 @@ E('P','Mạng xã hội bùng nổ','Một khoảnh khắc của bạn được 
 /* ----- Menu mới: chọn vai ngay từ đầu ----- */
 function menu(){UI.role=UI.role||'P';const R=UI.role,rc=(k,e,t,d)=>`<div class="rc ${R===k?'on':''}" onclick="UI.nn=($('#nn')||{}).value||'';UI.role='${k}';render()"><b>${e}</b><b style="font-size:16px">${t}</b><small class="mu">${d}</small></div>`;
  let h='<div class="hero"><div style="font-size:48px">⚽</div><h1>SỰ NGHIỆP</h1><div class="mu">Sống trọn một đời bóng đá</div></div>';
- for(let i=1;i<=3;i++){const g=load(i);h+=`<div class="card"><b>Slot ${i}</b>`+(g?`<p class="mu">${(g.mode||'P')==='C'?'📋 HLV':'⚽ Cầu thủ'} ${g.name} · Mùa ${g.season} · ${g.age} tuổi · ${g.teams[g.team].n}</p><div class="grid"><button class="pri" onclick="loadGame(${i})">Tiếp tục</button><button onclick="if(confirm('Xóa save này?'))del(${i})">Xóa</button></div>`:(UI.nw===i?`<div class="roles">${rc('P','⚽','Cầu thủ','Sống đời cầu thủ từ 18 tuổi đến giải nghệ')}${rc('C','📋','Huấn luyện viên','Đọc đối thủ, chọn chiến thuật, dẫn dắt đội')}</div><input id="nn" placeholder="Tên của bạn" maxlength="24" value="${UI.nn||''}">${R==='P'?`<select id="np"><option value="FW">Tiền đạo</option><option value="MF">Tiền vệ</option><option value="DF">Hậu vệ</option></select>`:`<select id="np" style="display:none"><option value="FW">x</option></select>`}${UI.mode==='real'&&!UI.rl?'':`<select id="nt">${(UI.rl?UI.rl.teams.map(t=>t.name+' (hạng '+t.rank+')'):CFG.teams).map((t,k)=>`<option value="${k}">${t}</option>`).join('')}</select>`}<select id="nm" onchange="UI.nn=$('#nn').value;UI.mode=this.value;UI.rl=null;UI.err='';render()"><option value="sim"${UI.mode==='real'?'':' selected'}>Thế giới ảo (offline)</option><option value="real"${UI.mode==='real'?' selected':''}>Thế giới thật (cần deploy Vercel)</option></select>${UI.mode==='real'?`<select id="nl">${CFG.leagues.map(l=>`<option value="${l.id}"${UI.lg===l.id?' selected':''}>${l.n}</option>`).join('')}</select>`:''}${UI.err?`<p style="color:var(--r)">${UI.err}</p>`:''}<button class="pri" style="width:100%" onclick="goNew(${i})">${UI.mode==='real'&&!UI.rl?'Tải danh sách đội':'Bắt đầu sự nghiệp'}</button>`:`<p class="mu">Slot trống</p><button class="ok" onclick="UI.nw=${i};render()">Tạo nhân vật mới</button>`))+'</div>'}
+ for(let i=1;i<=3;i++){const g=load(i);h+=`<div class="card"><b>Slot ${i}</b>`+(g?`<p class="mu">${(g.mode||'P')==='C'?'📋 HLV':'⚽ Cầu thủ'} ${g.name} · Mùa ${g.season} · ${g.age} tuổi · ${g.teams[g.team].n}</p><div class="grid"><button class="pri" onclick="loadGame(${i})">Tiếp tục</button><button onclick="if(confirm('Xóa save này?'))del(${i})">Xóa</button></div>`:(UI.nw===i?`<div class="roles">${rc('P','⚽','Cầu thủ','Sống đời cầu thủ từ 18 tuổi đến giải nghệ')}${rc('C','📋','Huấn luyện viên','Đọc đối thủ, chọn chiến thuật, dẫn dắt đội')}</div><input id="nn" placeholder="Tên của bạn" maxlength="24" value="${esc(UI.nn||'')}">${R==='P'?`<select id="np"><option value="FW">Tiền đạo</option><option value="MF">Tiền vệ</option><option value="DF">Hậu vệ</option></select>`:`<select id="np" style="display:none"><option value="FW">x</option></select>`}${UI.mode==='real'&&!UI.rl?'':`<select id="nt">${(UI.rl?UI.rl.teams.map(t=>t.name+' (hạng '+t.rank+')'):CFG.teams).map((t,k)=>`<option value="${k}">${t}</option>`).join('')}</select>`}<select id="nm" onchange="UI.nn=$('#nn').value;UI.mode=this.value;UI.rl=null;UI.err='';render()"><option value="sim"${UI.mode==='real'?'':' selected'}>Thế giới ảo (offline)</option><option value="real"${UI.mode==='real'?' selected':''}>Thế giới thật (cần deploy Vercel)</option></select>${UI.mode==='real'?`<select id="nl">${CFG.leagues.map(l=>`<option value="${l.id}"${UI.lg===l.id?' selected':''}>${l.n}</option>`).join('')}</select>`:''}${UI.err?`<p style="color:var(--r)">${UI.err}</p>`:''}<button class="pri" style="width:100%" onclick="goNew(${i})">${UI.mode==='real'&&!UI.rl?'Tải danh sách đội':'Bắt đầu sự nghiệp'}</button>`:`<p class="mu">Slot trống</p><button class="ok" onclick="UI.nw=${i};render()">Tạo nhân vật mới</button>`))+'</div>'}
  return h}
 const _ng=newGame;newGame=function(i,n,p,t){const role=UI.role||'P';_ng(i,n,p,t);if(!S)return;S.mode=role;S.cT=50;S.hap=60;S.life={};S.offers=[];S.ts={st:'possess',line:'mid',tempo:'mid',press:'mid'};
  if(role==='C'){S.role='C';S.ret=true;S.age=35;S.me.age=35;S.me.inj=99;S.lineupSelf=false;S.coach={tac:35,trn:35,hr:35,vis:35,rep:25};S.budget=6000;S.csal=600}
@@ -439,13 +439,13 @@ function mS(){const m=UI.m,C=S.role==='C';let L=lineup(S.team,m.starts||m.on);if
  if(C){const f=tacFx(m.opp);a+=f.a-(m.fat||0)*1.5;d+=f.d-(m.fat||0);oa-=f.b*.7;od-=f.b*.35}
  const g=gr(m.opp);return{ma:a,md:d,oa:oa+g,od:od+g,L,OL}}
 function meStarts(){if(S.inj)return false;const o=S.teams[S.team].sq.filter(p=>!p.me&&!p.inj).sort((a,b)=>b.ovr-a.ovr);return S.me.ovr+(S.form-50)/10+((S.cT==null?50:S.cT)-50)/8>=(o[10]?o[10].ovr:0)-1}
-function relBoost(){if(S.role!=='P')return 0;const q=lineup(S.team,1).filter(p=>!p.me);if(!q.length)return 0;const c=q.reduce((s,p)=>s+p.close,0)/q.length,e=q.reduce((s,p)=>s+p.envy,0)/q.length;return((c-40)/15-(e-20)/30)*2}
+function relBoost(){if(S.role!=='P')return 0;const q=lineup(S.team,1).filter(p=>!p.me);if(!q.length)return 0;const c=q.reduce((s,p)=>s+p.close,0)/q.length,e=q.reduce((s,p)=>s+p.envy,0)/q.length;return cl(((c-40)/15-(e-20)/30)*2,-3,3)}
 function tickMo(){const m=UI.m;if(!m.xs||m.clock%10<1)m.xs=mS();const x=m.xs,t=S.ts||{};PV.mo=cl(PV.mo*.9+((x.ma+x.md)-(x.oa+x.od))/120+(Math.random()-.5)*.35,-1,1);
  if(S.role==='C')m.fat=(m.fat||0)+({low:.006,mid:.012,high:.02}[t.press||'mid'])+(t.tempo==='fast'?.008:0)}
 function upd(){const m=UI.m,e=$('#clk');if(!e||!m)return;e.textContent=Math.floor(m.clock||0)+"'";const b=$('#mo');if(b){b.style.left=(PV.mo>=0?50:50+PV.mo*50)+'%';b.style.width=Math.abs(PV.mo)*50+'%';b.style.background=PV.mo>=0?'var(--g)':'var(--r)'}const p=$('#poss');if(p)p.textContent='Kiểm soát '+Math.round(50+PV.mo*25)+'% · '+(PV.mo>.3?'Bạn đang áp đảo':PV.mo<-.3?'Đối thủ đang áp đảo':'Thế trận giằng co')+(S.role==='C'?' · Thể lực đội '+Math.max(0,Math.round(100-(m.fat||0)*30))+'%':'')}
 function runTo(t,cb){const m=UI.m;clearInterval(UI.iv);UI.iv=setInterval(()=>{if(UI.m!==m){clearInterval(UI.iv);return}m.clock=Math.min(t,m.clock+1);tickMo();upd();if(m.clock>=t){clearInterval(UI.iv);cb()}},UI.quick?0:Math.max(30,S.sp/8))}
 function anim(a){PV.atk={atk:a,t0:performance.now(),dur:1100}}
-function stepM(){const m=UI.m;if(!m||m.done)return;clearInterval(UI.iv);clearTimeout(UI.t);if(m.wait==='ht')m.wait=null;
+function stepM(){const m=UI.m;if(!m||m.done)return;clearInterval(UI.iv);clearTimeout(UI.t);clearTimeout(m.rt);if(m.wait==='ht')m.wait=null;
  if(m.i>=10)return runTo(90,endM);
  if(m.i===5&&!m.ht)return runTo(45,()=>{m.ht=true;m.log.push('⏸ Hết hiệp 1. Tỉ số '+m.sc.join(' - '));if(S.role==='C'&&!UI.quick){m.wait='ht';return render()}if(S.role==='P'&&!m.starts&&!S.inj){m.on=true;m.log.push('🔁 HLV cho bạn vào sân sau giờ nghỉ!')}stepM()});
  runTo(m.mins[m.i],moment)}
@@ -453,10 +453,10 @@ function moment(){const m=UI.m,mn=m.mins[m.i],x=mS(),atk=Math.random()<x.ma/(x.m
  if(m.i===3&&S.role==='C'&&!(S.scT&&S.scT.w===S.week)){S.scT={w:S.week,lvl:1};m.log.push('🔎 Sau '+mn+' phút, bạn nhận ra đối thủ đá kiểu '+TS_ST[oppTac(m.opp).st]+'.')}
  const inv=(m.starts||m.on)&&S.role==='P'&&!S.inj,pr=(atk?{FW:.6,MF:.5,DF:.25}:{DF:.6,MF:.4,FW:.15})[S.pos]*(1+relBoost()/8);
  if(inv&&Math.random()<pr){if(UI.quick)return resM(w,atk?(S.pos==='FW'?'sht':S.pos==='MF'?'pas':'drb'):'def');m.wait=w;return render()}
- anim(atk);setTimeout(()=>resM(w,null),UI.quick?0:1100)}
-const _rs=resM;resM=function(w,ch){const m=UI.m,s0=m.sc.join(),rb=relBoost();S.luck=Math.max(0,S.luck+rb);_rs(w,ch);S.luck=Math.max(0,S.luck-rb);
+ anim(atk);m.rt=setTimeout(()=>{if(UI.m===m&&!m.done)resM(w,null)},UI.quick?0:1100)}
+const _rs=resM;resM=function(w,ch){const m=UI.m,s0=m.sc.join();S.rbT=relBoost();try{_rs(w,ch)}finally{S.rbT=0}
  const goal=m.sc.join()!==s0,mine=m.sc[0]>+s0.split(',')[0];PV.fl={t:goal?'⚽ BÀN THẮNG!':'',c:mine?'#ffd24a':'#ff6b6b',u:performance.now()+1600};if(goal&&navigator.vibrate)navigator.vibrate(150);setTimeout(()=>{PV.atk=null},900)};
-function ch(c){const m=UI.m,w=m.wait;if(!w||w==='ht')return;m.wait=null;anim(w.atk);setTimeout(()=>resM(w,c),UI.quick?0:900);render()}
+function ch(c){const m=UI.m,w=m.wait;if(!w||w==='ht')return;m.wait=null;anim(w.atk);m.rt=setTimeout(()=>{if(UI.m===m&&!m.done)resM(w,c)},UI.quick?0:900);render()}
 const _em=endM;endM=function(){const m=UI.m;if(!m||m.done)return;clearInterval(UI.iv);_em();if(S.role==='P'){const c=S.cT==null?50:S.cT;if(m.rating!=null)S.cT=cl(c+(m.rating>=7?2:m.rating<5.5?-2:0));else if(!(m.starts||m.on))S.cT=cl(c-1)}save()};
 async function playWeek(quick){if(!UI.sel.length||UI.busy)return;
  S.snap={fame:S.fame,money:S.money,tm:S.tm,form:S.form,ovr:S.me.ovr,rep:Math.round(S.coach.rep),budget:S.budget};
@@ -542,11 +542,12 @@ E('C','Cầu thủ chê chiến thuật','Một trụ cột nói thẳng chiến
 /* ----- Âm thanh (Web Audio, không cần file) ----- */
 const SFX={ctx:null,on:true,crowd:null,
  init(){if(this.ctx)return;try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;const c=this.ctx=new C(),b=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const n=c.createBufferSource();n.buffer=b;n.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=650;const g=c.createGain();g.gain.value=0;n.connect(f);f.connect(g);g.connect(c.destination);n.start();this.crowd={g}}catch(e){}},
- amb(v){if(this.crowd&&this.on)this.crowd.g.gain.setTargetAtTime(v,this.ctx.currentTime,.35)},
- tone(fr,d,v){if(!this.ctx||!this.on)return;const c=this.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=fr;o.type='sine';g.gain.value=v;o.connect(g);g.connect(c.destination);o.start();g.gain.setTargetAtTime(0,c.currentTime+d*.7,.05);o.stop(c.currentTime+d)},
+ wake(){if(this.ctx&&this.ctx.state==='suspended'){try{this.ctx.resume()}catch(e){}}},
+ amb(v){this.wake();if(this.crowd&&this.on)this.crowd.g.gain.setTargetAtTime(v,this.ctx.currentTime,.35)},
+ tone(fr,d,v){if(!this.ctx||!this.on)return;this.wake();const c=this.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=fr;o.type='sine';g.gain.value=v;o.connect(g);g.connect(c.destination);o.start();g.gain.setTargetAtTime(0,c.currentTime+d*.7,.05);o.stop(c.currentTime+d)},
  whistle(){this.tone(2900,.25,.12);setTimeout(()=>this.tone(2900,.45,.12),320)},
- roar(){if(this.crowd&&this.on){this.crowd.g.gain.setTargetAtTime(.55,this.ctx.currentTime,.05);setTimeout(()=>this.amb(.06),1800)}}};
-if(typeof document.addEventListener==='function'){document.addEventListener('click',()=>SFX.init(),{once:true});document.addEventListener('touchstart',()=>SFX.init(),{once:true})}
+ roar(){this.wake();if(this.crowd&&this.on){this.crowd.g.gain.setTargetAtTime(.55,this.ctx.currentTime,.05);setTimeout(()=>this.amb(.06),1800)}}};
+if(typeof document.addEventListener==='function'){const U=['click','touchend','pointerup','keydown'],unlock=()=>{SFX.init();SFX.wake();if(SFX.ctx&&SFX.ctx.state==='running')U.forEach(e=>document.removeEventListener(e,unlock))};U.forEach(e=>document.addEventListener(e,unlock))}
 const _pw=playWeek;playWeek=async function(q){await _pw(q);SFX.whistle()};
 const _tk=tickMo;tickMo=function(){_tk();const m=UI.m;SFX.amb(.03+Math.abs(PV.mo)*.07);if(S.as&&S.as.fit&&m.fat)m.fat*=.992};
 const _rs2=resM;resM=function(w,ch){const s0=UI.m.sc.join();_rs2(w,ch);const m=UI.m;if(m.sc.join()!==s0){SFX.roar();const mine=m.sc[0]>+s0.split(',')[0];setTimeout(()=>{PV.atk={atk:mine,t0:performance.now(),dur:2600};PV.rp=performance.now()+2600},1000)}};
@@ -649,7 +650,7 @@ function moment(){const m=UI.m,mn=m.mins[m.i],x=mS(),atk=Math.random()<x.ma/(x.m
  if(m.i===3&&S.role==='C'&&!(S.scT&&S.scT.w===S.week)){S.scT={w:S.week,lvl:1};m.log.push('🔎 Sau '+mn+' phút, bạn nhận ra đối thủ đá kiểu '+TS_ST[oppTac(m.opp).st]+'.')}
  const inv=(m.starts||m.on)&&S.role==='P'&&!S.inj,pr=(atk?{FW:.6,MF:.5,DF:.25,GK:.12}:{DF:.6,MF:.4,FW:.15,GK:.75})[S.pos]*(1+relBoost()/8);
  if(inv&&Math.random()<pr){if(UI.quick)return resM(w,autoCh(w));m.wait=w;return render()}
- anim(atk);setTimeout(()=>resM(w,null),UI.quick?0:1100)}
+ anim(atk);m.rt=setTimeout(()=>{if(UI.m===m&&!m.done)resM(w,null)},UI.quick?0:1100)}
 const _rs4=resM;resM=function(w,ch){if(S.pos!=='GK'||!GKMAP[ch])return _rs4(w,ch);
  const m=UI.m,p0=m.perf,g0=m.g,c0=m.sc[1],h0=m.sc[0],d0=S.st.def,isD=ch==='save'||ch==='punch'||ch==='rush';
  if(isD)S.st.def=cl(d0+(S.st.sht-50)/6+(ch==='rush'?12:0));if(ch==='rush')w.pg=.5;
@@ -662,7 +663,7 @@ const _rs4=resM;resM=function(w,ch){if(S.pos!=='GK'||!GKMAP[ch])return _rs4(w,ch
   short:ok?(myG?'🧤 Đường chuyền ngắn của bạn khởi đầu pha ghi bàn đẹp!':'🧤 Bạn chuyền ngắn an toàn, đội giữ được bóng.'):'❌ Bạn chuyền hỏng, may mà đối thủ không tận dụng được.'};
  m.log[m.log.length-1]=w.mn+"' "+T[ch];render()};
 const _mv=mView;mView=function(){let h=_mv();const m=UI.m;if(S.pos==='GK'&&S.role==='P'&&m&&m.wait&&m.wait!=='ht'){const a=m.wait.atk;h=h.replace(/<div class="card modal">[\s\S]*?<\/div>/,`<div class="card modal"><h3>${m.wait.mn}' ${a?'Bóng trong tay bạn, cả đội chờ lệnh!':'Cú sút đang bay về phía bạn!'}</h3>${a?`<button onclick="ch('long')">🚀 Phát bóng dài</button><button onclick="ch('short')">🧤 Chuyền ngắn an toàn</button>`:`<button onclick="ch('save')">🧤 Bắt bóng chắc chắn</button><button onclick="ch('punch')">🥊 Đấm bóng ra (dựa vào phản xạ)</button><button onclick="ch('rush')">🏃 Lao ra cản góc (rủi ro cao)</button>`}</div>`)}return h};
-const _em4=endM;endM=function(){const m=UI.m;if(!m||m.done)return;const gk=S.pos==='GK'&&S.role==='P'&&(m.starts||m.on),clean=gk&&m.sc[1]===0;if(gk){if(clean){m.perf+=1.5;if(S.gk)S.gk.cs++}else if(m.sc[1]>=3)m.perf-=1.2}_em4();if(clean)S.news='🧤 '+S.name+' giữ sạch lưới, đội nhà không để thủng lưới trận này.';chk();save()};
+const _em4=endM;endM=function(){const m=UI.m;if(!m||m.done)return;const gk=S.pos==='GK'&&S.role==='P'&&(m.starts||m.on),clean=gk&&m.sc[1]===0;if(gk){if(clean){m.perf+=1.5;if(S.gk)S.gk.cs++}else if(m.sc[1]>=3)m.perf-=1.2}_em4();if(clean)S.news='🧤 '+S.name+' giữ sạch lưới, đội nhà không để thủng lưới trận này.';refreshSum();chk();save();render()};
 const _cr=cupRound;cupRound=function(wk){const g0=S.goals,s0=S.sg;_cr(wk);if(S.pos==='GK'&&S.role==='P'){S.goals=g0;S.sg=s0;S.notice=S.notice.map(x=>x.replace(' · bạn ghi bàn!',''))}};
 const _tn=tourney;tourney=function(n){const t=_tn(n);if(S.pos==='GK')t.goals=0;return t};
 const _cv2=cView;cView=function(){return(S.pos==='GK'&&S.role==='P'&&S.gk?`<div class="card"><h3>🧤 Thủ môn</h3><div class="grid"><div>Giữ sạch lưới<br><b>${S.gk.cs}</b></div><div>Pha cứu thua<br><b>${S.gk.saves}</b></div></div></div>`:'')+_cv2()};
@@ -674,5 +675,88 @@ CFG.ev.push(
 Ek(()=>MD()==='P'&&S.pos==='GK',E('P','Huấn luyện viên thủ môn đề nghị tập riêng','Thầy muốn kèm riêng bạn những pha đối mặt một chọi một.',['Tập thêm',{st:{def:1,spd:1},energy:-10},'Bạn bay người cả buổi chiều.'],['Nghỉ ngơi',{energy:6},'Cơ thể cần hồi phục.'])),
 Ek(()=>MD()==='P'&&S.pos==='GK',E('P','Fan chê sai lầm của thủ môn','Một pha hụt bóng của bạn được cắt thành clip lan truyền.',['Nhận lỗi công khai',{fame:1,chem:3},'Đồng đội trân trọng thái độ của bạn.'],['Im lặng tập tiếp',{form:2,fame:-1},'Bạn để đôi găng lên tiếng.']))
 );
+/* ===== 15. AI CẦU THỦ TRÊN SÂN: vị trí theo thế trận, chuyền có chọn lọc, pressing, việt vị, thủ môn, quay chậm thật ===== */
+const PS={P:[],B:{x:.5,y:.5,own:-1,fl:null},tm:1,fz:false,atk:null,shot:null,buf:[],rep:null,m:null,fm:null,w:null,t:0,hold:0,holdFn:null};
+const gxT=tm=>tm===1?1:0,dirT=tm=>tm===1?1:-1;
+const segD=(a,b,c)=>{const dx=b.x-a.x,dy=b.y-a.y,l=dx*dx+dy*dy||1e-9;let u=((c.x-a.x)*dx+(c.y-a.y)*dy)/l;u=Math.max(0,Math.min(1,u));return Math.hypot(a.x+u*dx-c.x,a.y+u*dy-c.y)};
+function psInit(m){const fm=S.role==='C'?S.formation:'4-4-2',mk=(p,tm,i)=>({tm,i,l:p.l,hx:p.x,hy:p.y*.86+.07,x:p.x,y:p.y*.86+.07,vx:0,vy:0,dec:0});
+ PS.P=[...lay(fm,1).map((p,i)=>mk(p,1,i)),...lay('4-4-2',0).map((p,i)=>mk(p,2,i))];PS.B={x:.5,y:.5,own:-1,fl:null};PS.atk=null;PS.shot=null;PS.buf=[];PS.rep=null;PS.hold=0;PS.fm=fm;PS.w=null;
+ const tm=Math.random()<.5?1:2;psGive(PS.P.findIndex(p=>p.tm===tm&&p.l==='MF'))}
+function rehome(fm){const a=lay(fm,1);PS.P.filter(p=>p.tm===1).forEach((p,i)=>{if(a[i]){p.l=a[i].l;p.hx=a[i].x;p.hy=a[i].y*.86+.07}})}
+function psGive(j){if(j<0)j=0;const p=PS.P[j];PS.B.own=j;PS.B.fl=null;PS.tm=p.tm;p.dec=performance.now()+450+Math.random()*500}
+function psPass(o,j,t){const P=PS.P,B=PS.B,q=P[j],dist=Math.hypot(q.x-o.x,q.y-o.y),mo=PV.mo*(o.tm===1?1:-1),f={type:'pass',x0:B.x,y0:B.y,x1:cl(q.x+q.vx*.25,.03,.97),y1:cl(q.y+q.vy*.25,.07,.93),t0:t,dur:cl(dist/.55,.25,.9),to:j};
+ const L=P.filter(e=>e.tm!==o.tm&&e.l!=='GK').map(e=>[e,segD(o,q,e)]).sort((a,b)=>a[1]-b[1])[0];
+ if(L&&L[1]<.05&&Math.random()<cl(.45-L[1]*5-mo*.3,.05,.7)*(PS.atk&&PS.atk.tm===o.tm?.25:1)){f.to=P.indexOf(L[0]);f.x1=L[0].x;f.y1=L[0].y;f.dur*=.7}
+ B.fl=f;B.own=-1}
+function psShot(o,t,goal){const P=PS.P,B=PS.B,G=gxT(o.tm),gk=P.find(p=>p.l==='GK'&&p.tm!==o.tm),side=Math.random()<.5?-1:1,ty=.5+side*(.04+Math.random()*.06),sv=!goal&&Math.random()<.65,wide=!goal&&!sv,y1=wide?.5+side*(.15+Math.random()*.05):ty,dist=Math.hypot(G-B.x,y1-B.y);
+ B.fl={type:'shot',x0:B.x,y0:B.y,x1:G,y1,t0:t,dur:cl(dist/.95,.35,.9),tm:o.tm,goal,sv,gk};B.own=-1;PS.shot={k:wide?null:gk,gy:goal?.5-side*.1:ty}}
+function psDecide(o,t,press){const P=PS.P,d=dirT(o.tm),inA=PS.atk&&PS.atk.tm===o.tm,dg=Math.abs(gxT(o.tm)-o.x),opp=P.filter(q=>q.tm!==o.tm),
+ off=o.tm===1?Math.max(...P.filter(p=>p.tm===2&&p.l==='DF').map(p=>p.x),.5):Math.min(...P.filter(p=>p.tm===1&&p.l==='DF').map(p=>p.x),.5);
+ if(!PS.atk&&dg<.2&&Math.abs(o.y-.5)<.25&&Math.random()<.45)return psShot(o,t,false);
+ let best=-1,bs=-9;P.forEach((q,j)=>{if(q.tm!==o.tm||q===o)return;const dist=Math.hypot(q.x-o.x,q.y-o.y);if(dist<.06||dist>.5)return;if(q.l!=='GK'&&(o.tm===1?q.x>off+.005&&q.x>o.x:q.x<off-.005&&q.x<o.x))return;
+  const open=Math.min(...opp.map(e=>Math.hypot(e.x-q.x,e.y-q.y))),lane=Math.min(...opp.map(e=>segD(o,q,e))),sc=(q.x-o.x)*d*(inA?3.2:press?1.2:2)+Math.min(open,.12)*(press?6:4)+Math.min(lane,.08)*5-dist*.9-(q.l==='GK'?.9:0)+(Math.random()-.5)*.3;if(sc>bs){bs=sc;best=j}});
+ if(best<0||(!press&&!inA&&Math.random()<.3)){o.dec=t+450+Math.random()*400;return}
+ psPass(o,best,t)}
+function psLand(f,t){const B=PS.B,P=PS.P;B.fl=null;if(f.type==='pass'){psGive(f.to);return}
+ if(f.goal){PS.hold=t+1100;PS.holdFn=()=>psKick(f.tm===1?2:1)}else if(f.sv){PS.shot=null;psGive(P.indexOf(f.gk))}else{PS.hold=t+700;PS.holdFn=()=>{PS.shot=null;psGive(P.indexOf(f.gk))}}}
+function psKick(tm){PS.shot=null;PS.P.forEach(p=>{p.x=p.hx;p.y=p.hy;p.vx=p.vy=0});PS.B.x=.5;PS.B.y=.5;psGive(PS.P.findIndex(p=>p.tm===tm&&p.l==='MF'))}
+function psCue(a){const tm=a?1:2,P=PS.P,B=PS.B;if(!P.length)return;PS.atk={tm};PS.fz=false;const o=B.own>=0?P[B.own]:null;
+ if(!o||o.tm!==tm){let j=-1,bd=9;P.forEach((p,i)=>{if(p.tm===tm&&p.l!=='GK'){const d=Math.hypot(p.x-B.x,p.y-B.y);if(d<bd){bd=d;j=i}}});B.fl=null;psGive(j)}}
+function psWait(w){const P=PS.P,m=UI.m,mi=P.findIndex(p=>p.tm===1&&m.rm&&m.rm[p.i]&&m.rm[p.i].me);let j;
+ if(w.atk){j=mi>=0?mi:P.findIndex(p=>p.tm===1&&p.l==='FW');P[j].x=.78;P[j].y=.5+(Math.random()-.5)*.3}else{j=P.findIndex(p=>p.tm===2&&p.l==='FW');P[j].x=.2;P[j].y=.5+(Math.random()-.5)*.3}
+ P[j].vx=P[j].vy=0;psGive(j);PS.fz=true;PS.atk={tm:w.atk?1:2}}
+function psFinish(tm,goal){const P=PS.P,B=PS.B;PS.atk=null;PS.fz=false;let o=B.own>=0?P[B.own]:null;
+ if(!o||o.tm!==tm||o.l==='GK'){let j=-1,bd=9;P.forEach((p,i)=>{if(p.tm===tm&&p.l!=='GK'){const d=Math.hypot(p.x-B.x,p.y-B.y)*.5+Math.abs(gxT(tm)-p.x);if(d<bd){bd=d;j=i}}});psGive(j);o=P[j]}
+ psShot(o,performance.now(),goal)}
+function psStep(dt,t){const P=PS.P,B=PS.B;
+ if(PS.hold){if(t>=PS.hold){const fn=PS.holdFn;PS.hold=0;PS.holdFn=null;if(fn)fn()}}
+ const own=B.own>=0?P[B.own]:null,tm=PS.tm,fz=PS.fz?.2:1,atkOn=PS.atk?1.35:1,
+ off1=Math.max(...P.filter(p=>p.tm===2&&p.l==='DF').map(p=>p.x),.5),off2=Math.min(...P.filter(p=>p.tm===1&&p.l==='DF').map(p=>p.x),.5),
+ near=(tm2,pred)=>own?P.filter(p=>p.tm===tm2&&p!==own&&p.l!=='GK'&&pred(p)).sort((a,b)=>Math.hypot(a.x-own.x,a.y-own.y)-Math.hypot(b.x-own.x,b.y-own.y)).slice(0,2):[],
+ pressers=own?near(own.tm===1?2:1,()=>true):[],supp=own?near(own.tm,()=>true):[];
+ P.forEach((p,i)=>{const d=dirT(p.tm),att=p.tm===tm;let tx=p.hx+(B.x-.5)*.3,ty=.5+(p.hy-.5)*(att?1.12:.86)+(B.y-.5)*.12,spd=.1;
+  if(p.l==='GK'){tx=p.hx;ty=PS.shot&&PS.shot.k===p?PS.shot.gy:cl(.5+(B.y-.5)*.35,.4,.6);spd=PS.shot?.45:.08}
+  else{tx+=d*(att?(p.l==='FW'?.15:p.l==='MF'?.09:.05):(p.l==='FW'?-.02:p.l==='MF'?-.06:-.09));
+   if(p===own){tx=p.x+d*(PS.atk&&PS.atk.tm===p.tm?.25:.1);ty=p.y+(.5-p.y)*.25;spd=PS.atk&&PS.atk.tm===p.tm?.17:.1}
+   else if(own&&att){if(supp.includes(p)){tx=own.x-d*.05;ty=own.y+(p===supp[0]?-1:1)*.13;spd=.13}else if(p.l==='FW'||(p.l==='MF'&&i%3===0)){tx=own.x+d*.16;spd=.12}}
+   else if(own&&!att&&pressers.includes(p)){tx=own.x;ty=own.y;spd=.16}
+   if(att)tx=p.tm===1?Math.min(tx,off1-.01):Math.max(tx,off2+.01)}
+  const dx=tx-p.x,dy=ty-p.y,D=Math.hypot(dx,dy)||1,v=Math.min(spd*fz*atkOn,D*3),k=Math.min(1,dt*7);p.vx+=((dx/D)*v-p.vx)*k;p.vy+=((dy/D)*v-p.vy)*k});
+ for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const a=P[i],b=P[j],dx=a.x-b.x,dy=a.y-b.y,D=Math.hypot(dx,dy);if(D<.035&&D>0){const f=(.035-D)*.6;a.vx+=dx/D*f;a.vy+=dy/D*f;b.vx-=dx/D*f;b.vy-=dy/D*f}}
+ P.forEach(p=>{p.x=cl(p.x+p.vx*dt,.03,.97);p.y=cl(p.y+p.vy*dt,.07,.93)});
+ if(B.fl){const f=B.fl,k=Math.min(1,(t-f.t0)/(f.dur*1000));B.x=f.x0+(f.x1-f.x0)*k;B.y=f.y0+(f.y1-f.y0)*k;if(k>=1)psLand(f,t)}
+ else if(own){B.x=own.x+own.vx*.12;B.y=own.y+own.vy*.12;const pr=pressers.filter(q=>Math.hypot(q.x-own.x,q.y-own.y)<.035);
+  const m2=PV.mo*(own.tm===1?1:-1);if(!PS.fz&&!(PS.atk&&PS.atk.tm===own.tm)&&Math.random()<dt*.3*Math.max(0,-m2)){const q=P.map((p,i)=>[p,i]).filter(x=>x[0].tm!==own.tm&&x[0].l!=='GK').sort((u,v)=>Math.hypot(u[0].x-own.x,u[0].y-own.y)-Math.hypot(v[0].x-own.x,v[0].y-own.y))[0];psGive(q[1]);return}
+  if(pr.length&&!PS.fz){if(Math.random()<dt*Math.max(.08,.5-m2*.5)*(PS.atk&&PS.atk.tm===own.tm?.3:1)){psGive(P.indexOf(pr[0]));return}}
+  if(t>own.dec&&!PS.fz)psDecide(own,t,pr.length)}
+ else if(!PS.hold){let j=0,bd=9;P.forEach((p,i)=>{const d=Math.hypot(p.x-B.x,p.y-B.y);if(d<bd){bd=d;j=i}});psGive(j)}}
+function psClip(){const n=performance.now(),fr=PS.buf.filter(f=>f.t>n-2600);if(fr.length>10)PS.rep={fr,t0:n}}
+function anim(a){PV.atk={atk:a,t0:performance.now(),dur:1100};psCue(a)}
+const _rs5=resM;resM=function(w,ch){const m=UI.m,a=m.sc[0],b=m.sc[1];_rs5(w,ch);if(PS.m===m){const tm=w.atk?1:2,goal=tm===1?m.sc[0]>a:m.sc[1]>b;psFinish(tm,goal);if(goal)setTimeout(psClip,1500)}};
+function draw(c){const m=UI.m,w=c.clientWidth;if(!w||!m)return;const h=Math.round(w*.62);if(c.width!==w*2){c.width=w*2;c.height=h*2;c.style.height=h+'px'}
+ const g=c.getContext('2d'),W=c.width,H=c.height,t=performance.now(),withMe=m.starts||m.on,fm=S.role==='C'?S.formation:'4-4-2',key=fm+'|'+withMe+'|'+(m.sub?m.sub.n:'');
+ if(m.rk!==key){m.rk=key;m.rm=roster(S.team,fm,withMe,m.sub);m.ro=roster(m.opp,'4-4-2',0)}
+ if(PS.m!==m){PS.m=m;psInit(m);PS.t=t}if(PS.fm!==fm){PS.fm=fm;rehome(fm)}
+ const dt=Math.min(.05,(t-PS.t)/1000);PS.t=t;PS.fz=!!(m.wait&&m.wait!=='ht');if(PS.fz){if(PS.w!==m.wait){PS.w=m.wait;psWait(m.wait)}}else PS.w=null;
+ let FP,FB;
+ if(PS.rep){const r=PS.rep,k=(t-r.t0)*.55,base=r.fr[0].t,last=r.fr[r.fr.length-1].t-base;if(k>=last)PS.rep=null;else{const f=r.fr.find(x=>x.t-base>=k)||r.fr[r.fr.length-1];FP=f.p;FB=f.b}}
+ if(!FP){if(!m.done&&m.wait!=='ht')psStep(dt,t);FP=PS.P.map(p=>[p.x,p.y]);FB=[PS.B.x,PS.B.y];if(!m.done){PS.buf.push({t,p:FP,b:FB});while(PS.buf.length&&PS.buf[0].t<t-3400)PS.buf.shift()}}
+ const mi=S.role==='P'?m.rm.findIndex(p=>p.me):-1,bx=FB[0],by=FB[1],z=1+.32*Math.min(1,Math.max(0,Math.abs(bx-.5)-.28)/.18),tx=Math.min(0,Math.max(W-W*z,W/2-bx*W*z)),ty=Math.min(0,Math.max(H-H*z,H/2-by*H*z));
+ g.setTransform(z,0,0,z,tx,ty);
+ for(let i=0;i<10;i++){g.fillStyle=i%2?'#157a3a':'#188a43';g.fillRect(i*W/10,0,W/10+1,H)}
+ g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=3;g.strokeRect(12,12,W-24,H-24);g.beginPath();g.moveTo(W/2,12);g.lineTo(W/2,H-12);g.stroke();g.beginPath();g.arc(W/2,H/2,H*.15,0,7);g.stroke();g.strokeRect(12,H*.27,W*.14,H*.46);g.strokeRect(W-12-W*.14,H*.27,W*.14,H*.46);g.fillStyle='#fff';g.fillRect(4,H*.42,8,H*.16);g.fillRect(W-12,H*.42,8,H*.16);
+ const ka=kit(S.team),kb=kit(m.opp);
+ PS.P.forEach((p,i)=>{const x=FP[i][0]*W,y=FP[i][1]*H,me=p.tm===1&&p.i===mi,k=p.tm===1?ka:kb;g.beginPath();g.arc(x,y,me?16:12,0,7);g.fillStyle=me?'#ffd24a':p.l==='GK'?(p.tm===1?'#34d399':'#fb923c'):k.a;g.fill();g.lineWidth=me?4:2;g.strokeStyle=me?'#fff':'rgba(0,0,0,.5)';g.stroke();g.fillStyle=me?'#201600':p.l==='GK'?'#0b1220':k.b;g.font='bold 14px system-ui';g.textAlign='center';g.fillText(p.i+1,x,y+5)});
+ const o=PS.B.own>=0&&!PS.rep?PS.P[PS.B.own]:null;if(o){const R=o.tm===1?m.rm:m.ro;if(R&&R[o.i]){g.fillStyle='#fff';g.font='bold 15px system-ui';g.textAlign='center';g.fillText((R[o.i].n||'').split(' ').slice(-1)[0],o.x*W,o.y*H-20)}}
+ g.beginPath();g.arc(bx*W,by*H,8,0,7);g.fillStyle='#fff';g.fill();g.strokeStyle='#000';g.lineWidth=2;g.stroke();g.setTransform(1,0,0,1,0,0);
+ const f=PV.fl;if(f&&f.t&&t<f.u&&!PS.rep){g.globalAlpha=Math.min(1,(f.u-t)/500);g.fillStyle=f.c;g.font='900 '+Math.round(H*.15)+'px system-ui';g.textAlign='center';g.fillText(f.t,W/2,H*.5);g.globalAlpha=1}
+ if(PS.rep){g.fillStyle='#fff';g.font='bold 20px system-ui';g.textAlign='left';g.fillText('🎬 REPLAY (quay chậm)',16,34)}}
+
+/* ===== 16. SỬA LỖI: làm sạch chuỗi, huỷ timer trận, tóm tắt tuần, lý do lỗi API ===== */
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function clean(s){return String(s==null?'':s).replace(/[<>"'&`]/g,'').trim().slice(0,40)}
+function stopM(){clearInterval(UI.iv);clearTimeout(UI.t);if(UI.m){clearTimeout(UI.m.rt);UI.m=null}}
+function refreshSum(){if(!S||!S.snap)return;S.sum=[['Danh tiếng',S.fame-S.snap.fame],['Tiền',Math.round(S.money-S.snap.money)],['Tinh thần đội',Math.round(S.tm-S.snap.tm)],['Phong độ',Math.round(S.form-S.snap.form)],['OVR',S.me.ovr-S.snap.ovr],['Uy tín HLV',Math.round(S.coach.rep)-S.snap.rep],['Ngân sách',S.budget-S.snap.budget]].filter(x=>x[1])}
+function errText(j,r){const d=j&&j.detail,e=j&&j.error;if(d&&d.plan)return 'gói API-Football đang dùng không truy cập được mùa này';if(e==='NO_KEY')return 'server chưa có API_FOOTBALL_KEY';if(e==='QUOTA'||e==='BUSY')return 'hết lượt gọi API tạm thời';if(e&&String(e).startsWith('BAD_'))return 'yêu cầu không hợp lệ ('+e+')';return 'lỗi máy chủ'+(e?' ('+e+')':' (HTTP '+(r&&r.status)+')')}
 render();
 </script></body></html>
